@@ -7,8 +7,8 @@ Use this checklist before and after merging changes to `main`.
 - [ ] Confirm PR scope and linked issue(s) are complete.
 - [ ] Ensure CI is green on the PR.
 - [ ] Run local checks:
-  - [ ] `python -m py_compile app.py db.py helpers.py ecb.py`
-  - [ ] `python -m unittest discover -s tests -v`
+  - [ ] `python3 -m py_compile $(git ls-files '*.py')`
+  - [ ] `python3 -m unittest discover -s tests -v`
 - [ ] Review migration risk (if schema/data logic changed).
 - [ ] Prepare rollback notes (commit hash to revert, impacted files, DB implications).
 
