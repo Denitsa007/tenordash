@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% set active_page = "banks" %}
+
+{% block title %}Banks — Fixed Advances{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <h2>Banks</h2>
+  <div class="topbar-actions">
+    <button class="btn-primary" onclick="openBankForm()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>
+      Add Bank
+    </button>
+  </div>
+</div>
+
+<div class="section">
+  <table class="data-table" id="banks-table">
+    <thead>
+      <tr>
+        <th>Bank Key</th>
+        <th>Bank Name</th>
+        <th style="text-align:right">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for bank in banks %}
+      <tr data-key="{{ bank.bank_key }}">
+        <td class="mono text-muted">{{ bank.bank_key }}</td>
+        <td>{{ bank.bank_name }}</td>
+        <td>
+          <div class="row-actions">
+            <button onclick="editBank('{{ bank.bank_key }}', '{{ bank.bank_name }}')" title="Edit">&#9998;</button>
+            <button class="delete" onclick="deleteBank('{{ bank.bank_key }}')" title="Delete">&times;</button>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="3">
+          <div class="empty-state">
+            <p>No banks yet. Add one to get started.</p>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Slide-out Panel -->
+<div class="panel-overlay" id="bank-panel">
+  <div class="slide-panel">
+    <h3>
+      <span id="bank-form-title">Add Bank</span>
+      <button class="panel-close" onclick="closeBankForm()">&times;</button>
+    </h3>
+    <form id="bank-form" onsubmit="saveBank(event)">
+      <div class="form-group">
+        <label>Bank Key</label>
+        <input type="text" id="bank-key" required placeholder="e.g. B001" />
+      </div>
+      <div class="form-group">
+        <label>Bank Name</label>
+        <input type="text" id="bank-name" required placeholder="e.g. UBS" />
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" onclick="closeBankForm()">Cancel</button>
+        <button type="submit" class="btn-primary">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 7 5.5 10.5 12 4"/></svg>
+          Save
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openBankForm(key, name) {
+  document.getElementById('bank-form-title').textContent = key ? 'Edit Bank' : 'Add Bank';
+  document.getElementById('bank-key').value = key || '';
+  document.getElementById('bank-name').value = name || '';
+  document.getElementById('bank-key').readOnly = !!key;
+  document.getElementById('bank-panel').classList.add('show');
+  document.getElementById(key ? 'bank-name' : 'bank-key').focus();
+}
+
+function closeBankForm() {
+  document.getElementById('bank-panel').classList.remove('show');
+}
+
+function editBank(key, name) {
+  openBankForm(key, name);
+}
+
+async function saveBank(e) {
+  e.preventDefault();
+  const data = {
+    bank_key: document.getElementById('bank-key').value.trim(),
+    bank_name: document.getElementById('bank-name').value.trim()
+  };
+  const res = await fetch('/banks', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data)
+  });
+  if (res.ok) location.reload();
+}
+
+async function deleteBank(key) {
+  if (!confirm('Delete bank ' + key + '?')) return;
+  const res = await fetch('/banks/' + key, { method: 'DELETE' });
+  if (res.ok) location.reload();
+}
+</script>
+{% endblock %}

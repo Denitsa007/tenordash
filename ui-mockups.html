@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fixed Advances App — UI Comparison</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=Segoe+UI+Variable:wght@400;500;600;700&display=swap');
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --tab-bar-bg: #1a1a2e;
+    --tab-bar-active: #e94560;
+    --tab-bar-text: #a0a0b8;
+    --tab-bar-text-active: #fff;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: #0f0f1a;
+    color: #fff;
+    min-height: 100vh;
+  }
+
+  /* ── Top-level tab bar ── */
+  .comparison-header {
+    background: var(--tab-bar-bg);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    padding: 24px 32px 0;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+  }
+  .comparison-header h1 {
+    font-family: 'Source Serif 4', serif;
+    font-size: 15px;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #888;
+    margin-bottom: 16px;
+  }
+  .tab-bar {
+    display: flex;
+    gap: 0;
+  }
+  .tab-btn {
+    background: none;
+    border: none;
+    color: var(--tab-bar-text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 12px 28px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .tab-btn:hover { color: #ccc; }
+  .tab-btn.active {
+    color: var(--tab-bar-text-active);
+    border-bottom-color: var(--tab-bar-active);
+  }
+  .tab-btn .tab-tag {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    margin-left: 8px;
+    vertical-align: middle;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+  .tab-btn:nth-child(1) .tab-tag { background: #2d2d3f; color: #8be9fd; }
+  .tab-btn:nth-child(2) .tab-tag { background: #1e3a2f; color: #50fa7b; }
+  .tab-btn:nth-child(3) .tab-tag { background: #2f2a1e; color: #f1fa8c; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ═══════════════════════════════════════════
+     OPTION A: TERMINAL TUI
+     ═══════════════════════════════════════════ */
+  .tui {
+    background: #0c0c14;
+    min-height: calc(100vh - 90px);
+    padding: 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: #c8c8d4;
+    overflow-x: auto;
+  }
+  .tui-screen {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 12px 16px;
+  }
+  .tui-title-bar {
+    background: #3b3b5c;
+    color: #fff;
+    padding: 4px 12px;
+    font-weight: 600;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    letter-spacing: 0.02em;
+  }
+  .tui-box {
+    border: 1px solid #3b3b5c;
+    border-radius: 0;
+    margin-bottom: 8px;
+  }
+  .tui-box-title {
+    background: #1e1e30;
+    color: #8be9fd;
+    padding: 3px 10px;
+    font-weight: 600;
+    font-size: 12px;
+    border-bottom: 1px solid #3b3b5c;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .tui-cards {
+    display: flex;
+    gap: 0;
+    padding: 0;
+  }
+  .tui-card {
+    flex: 1;
+    padding: 10px 14px;
+    border-right: 1px solid #3b3b5c;
+    text-align: center;
+  }
+  .tui-card:last-child { border-right: none; }
+  .tui-card-label {
+    font-size: 11px;
+    color: #6272a4;
+    margin-bottom: 4px;
+  }
+  .tui-card-value {
+    font-size: 16px;
+    font-weight: 600;
+    color: #50fa7b;
+  }
+  .tui-card-value.warn { color: #f1fa8c; }
+  .tui-card-value.info { color: #8be9fd; }
+
+  .tui table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .tui th {
+    background: #1e1e30;
+    color: #bd93f9;
+    padding: 5px 8px;
+    text-align: left;
+    font-weight: 600;
+    border-bottom: 1px solid #3b3b5c;
+    white-space: nowrap;
+  }
+  .tui td {
+    padding: 4px 8px;
+    border-bottom: 1px solid #1e1e30;
+    white-space: nowrap;
+  }
+  .tui tr.highlight { background: rgba(241,250,140,0.06); }
+  .tui tr.highlight td:nth-child(8) { color: #f1fa8c; }
+  .tui .amt { color: #50fa7b; text-align: right; }
+  .tui .rate { color: #ffb86c; text-align: right; }
+  .tui .dt { color: #8be9fd; }
+  .tui .id { color: #6272a4; }
+
+  .tui-form {
+    padding: 10px 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 6px 20px;
+  }
+  .tui-field label {
+    color: #bd93f9;
+    font-size: 11px;
+    display: block;
+    margin-bottom: 2px;
+  }
+  .tui-field input, .tui-field select {
+    background: #1a1a2e;
+    border: 1px solid #3b3b5c;
+    color: #f8f8f2;
+    padding: 4px 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    width: 100%;
+  }
+  .tui-field input:focus, .tui-field select:focus {
+    border-color: #8be9fd;
+    outline: none;
+  }
+  .tui-calc {
+    grid-column: 1 / -1;
+    padding: 6px 0;
+    color: #6272a4;
+    font-size: 11px;
+    border-top: 1px dashed #3b3b5c;
+    margin-top: 4px;
+  }
+  .tui-calc span { color: #50fa7b; margin: 0 12px; }
+  .tui-status-bar {
+    background: #3b3b5c;
+    color: #c8c8d4;
+    padding: 5px 14px;
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    margin-top: 8px;
+  }
+  .tui-status-bar kbd {
+    background: #1e1e30;
+    padding: 1px 6px;
+    border-radius: 2px;
+    color: #f1fa8c;
+    margin-right: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .tui-hotkeys span { margin-right: 18px; }
+
+  /* ═══════════════════════════════════════════
+     OPTION B: WEB UI
+     ═══════════════════════════════════════════ */
+  .web-ui {
+    background: #f4f5f7;
+    min-height: calc(100vh - 90px);
+    display: flex;
+    font-family: 'DM Sans', sans-serif;
+    color: #1a1a2e;
+  }
+  .web-sidebar {
+    width: 220px;
+    background: #1a1a2e;
+    color: #a0a0b8;
+    padding: 24px 0;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .web-sidebar-logo {
+    padding: 0 20px 24px;
+    font-family: 'Source Serif 4', serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 12px;
+    line-height: 1.3;
+  }
+  .web-sidebar-logo small {
+    display: block;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 400;
+    color: #6272a4;
+    letter-spacing: 0.04em;
+    margin-top: 2px;
+  }
+  .web-nav-item {
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.15s;
+    border-left: 3px solid transparent;
+  }
+  .web-nav-item:hover { background: rgba(255,255,255,0.04); color: #fff; }
+  .web-nav-item.active {
+    background: rgba(233,69,96,0.08);
+    color: #fff;
+    border-left-color: #e94560;
+  }
+  .web-nav-item svg { width: 16px; height: 16px; opacity: 0.6; }
+  .web-nav-item.active svg { opacity: 1; }
+  .web-nav-badge {
+    margin-left: auto;
+    background: #e94560;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+  }
+
+  .web-main {
+    flex: 1;
+    padding: 28px 32px;
+    overflow-y: auto;
+    max-height: calc(100vh - 90px);
+    position: relative;
+  }
+  .web-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  .web-topbar h2 {
+    font-family: 'Source Serif 4', serif;
+    font-size: 22px;
+    font-weight: 600;
+    color: #1a1a2e;
+  }
+  .web-topbar-actions { display: flex; gap: 10px; }
+  .btn-primary {
+    background: #1a1a2e;
+    color: #fff;
+    border: none;
+    padding: 9px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s;
+  }
+  .btn-primary:hover { background: #2d2d4a; }
+  .btn-secondary {
+    background: #fff;
+    color: #1a1a2e;
+    border: 1px solid #d0d0d8;
+    padding: 9px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+  }
+  .btn-secondary:hover { border-color: #1a1a2e; }
+
+  .web-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .web-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 18px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    border: 1px solid rgba(0,0,0,0.04);
+  }
+  .web-card-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #888;
+    margin-bottom: 8px;
+  }
+  .web-card-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1a1a2e;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .web-card-value.chf { color: #0d7c5f; }
+  .web-card-value.eur { color: #2563eb; }
+  .web-card-sub {
+    font-size: 11px;
+    color: #999;
+    margin-top: 4px;
+  }
+  .web-card.alert-card {
+    border-left: 3px solid #e94560;
+  }
+  .web-card.alert-card .web-card-value { color: #e94560; }
+
+  .web-section {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    border: 1px solid rgba(0,0,0,0.04);
+    margin-bottom: 20px;
+    overflow: hidden;
+  }
+  .web-section-header {
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #f0f0f2;
+  }
+  .web-section-header h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a1a2e;
+  }
+  .web-filter-pills { display: flex; gap: 6px; }
+  .web-pill {
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid #e0e0e6;
+    background: #fff;
+    cursor: pointer;
+    font-weight: 500;
+    color: #666;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .web-pill.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+
+  .web-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .web-table th {
+    text-align: left;
+    padding: 10px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #888;
+    background: #fafafa;
+    border-bottom: 1px solid #f0f0f2;
+  }
+  .web-table td {
+    padding: 11px 16px;
+    border-bottom: 1px solid #f6f6f8;
+    color: #333;
+  }
+  .web-table tr:hover { background: #f8f9fb; }
+  .web-table .mono {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+  }
+  .web-table .text-right { text-align: right; }
+  .web-table .text-green { color: #0d7c5f; }
+  .web-table .text-blue { color: #2563eb; }
+  .web-table .text-muted { color: #999; font-size: 12px; }
+  .web-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .web-badge-chf { background: #e6f7f2; color: #0d7c5f; }
+  .web-badge-eur { background: #e8f0fe; color: #2563eb; }
+
+  .web-alert-box {
+    background: #fff8f0;
+    border: 1px solid #fde1c4;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+  }
+  .web-alert-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #c2410c;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .web-alert-item {
+    font-size: 12px;
+    color: #9a3412;
+    padding: 4px 0;
+    display: flex;
+    justify-content: space-between;
+  }
+  .web-alert-item + .web-alert-item { border-top: 1px solid #fde1c4; }
+
+  /* Modal */
+  .web-modal-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.3);
+    display: none;
+    z-index: 100;
+  }
+  .web-modal-overlay.show { display: flex; justify-content: flex-end; }
+  .web-modal-panel {
+    width: 420px;
+    background: #fff;
+    height: 100%;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.12);
+    padding: 28px;
+    overflow-y: auto;
+    animation: slideIn 0.25s ease;
+  }
+  @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+  .web-modal-panel h3 {
+    font-family: 'Source Serif 4', serif;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .web-modal-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #999;
+    padding: 4px;
+  }
+  .web-form-group {
+    margin-bottom: 16px;
+  }
+  .web-form-group label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #666;
+    margin-bottom: 5px;
+  }
+  .web-form-group input,
+  .web-form-group select {
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid #d0d0d8;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    color: #1a1a2e;
+    background: #fff;
+    transition: border-color 0.15s;
+  }
+  .web-form-group input:focus,
+  .web-form-group select:focus {
+    outline: none;
+    border-color: #1a1a2e;
+    box-shadow: 0 0 0 3px rgba(26,26,46,0.06);
+  }
+  .web-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .web-form-hint {
+    font-size: 11px;
+    color: #0d7c5f;
+    margin-top: 3px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .web-form-hint .edit-icon {
+    cursor: pointer;
+    color: #999;
+    font-size: 12px;
+  }
+  .web-calc-preview {
+    background: #f4f5f7;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin: 20px 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .web-calc-item-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #888;
+    margin-bottom: 2px;
+  }
+  .web-calc-item-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 15px;
+    font-weight: 600;
+    color: #1a1a2e;
+  }
+  .web-form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #f0f0f2;
+  }
+  .web-form-actions .btn-primary { flex: 1; justify-content: center; }
+  .web-form-actions .btn-secondary { flex: 1; justify-content: center; text-align: center; }
+
+  /* ═══════════════════════════════════════════
+     OPTION C: DESKTOP (TAURI/ELECTRON)
+     ═══════════════════════════════════════════ */
+  .desktop-app {
+    background: #f0f0f0;
+    min-height: calc(100vh - 90px);
+    font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+    font-size: 13px;
+    color: #1c1c1e;
+  }
+  .desktop-titlebar {
+    background: linear-gradient(180deg, #e8e8e8 0%, #d4d4d4 100%);
+    border-bottom: 1px solid #b8b8b8;
+    padding: 0 16px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .desktop-titlebar-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+  }
+  .desktop-traffic-lights {
+    position: absolute;
+    left: 14px;
+    display: flex;
+    gap: 7px;
+    align-items: center;
+  }
+  .traffic-light {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 0.5px solid rgba(0,0,0,0.12);
+  }
+  .tl-close { background: #ff5f57; }
+  .tl-min { background: #ffbd2e; }
+  .tl-max { background: #28c840; }
+
+  .desktop-toolbar {
+    background: #ececec;
+    border-bottom: 1px solid #c8c8c8;
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .desktop-tool-btn {
+    background: none;
+    border: 1px solid transparent;
+    padding: 5px 10px;
+    border-radius: 5px;
+    font-size: 12px;
+    font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+    color: #333;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-weight: 500;
+  }
+  .desktop-tool-btn:hover {
+    background: rgba(0,0,0,0.06);
+    border-color: rgba(0,0,0,0.08);
+  }
+  .desktop-tool-btn svg { width: 14px; height: 14px; }
+  .desktop-tool-sep {
+    width: 1px;
+    height: 20px;
+    background: #c8c8c8;
+    margin: 0 6px;
+  }
+
+  .desktop-tabs {
+    background: #e2e2e2;
+    display: flex;
+    padding: 0 12px;
+    border-bottom: 1px solid #c0c0c0;
+  }
+  .desktop-tab {
+    padding: 8px 18px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #666;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+  }
+  .desktop-tab:hover { color: #333; }
+  .desktop-tab.active {
+    color: #0066cc;
+    border-bottom-color: #0066cc;
+    background: rgba(0,102,204,0.04);
+  }
+  .desktop-tab .dtab-badge {
+    background: #ff3b30;
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 8px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+
+  .desktop-content {
+    padding: 16px 20px;
+  }
+
+  .desktop-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .desktop-card {
+    background: #fff;
+    border: 1px solid #d4d4d4;
+    border-radius: 6px;
+    padding: 12px 14px;
+  }
+  .desktop-card-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #888;
+    margin-bottom: 4px;
+  }
+  .desktop-card-value {
+    font-size: 18px;
+    font-weight: 700;
+    font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+  .desktop-card-value.dv-chf { color: #248a3d; }
+  .desktop-card-value.dv-eur { color: #0066cc; }
+  .desktop-card-value.dv-warn { color: #ff9500; }
+  .desktop-card-value.dv-util { color: #1c1c1e; }
+
+  .desktop-panel {
+    background: #fff;
+    border: 1px solid #d4d4d4;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .desktop-panel-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid #e8e8e8;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .desktop-panel-header h4 {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1c1c1e;
+  }
+  .desktop-search {
+    border: 1px solid #d4d4d4;
+    border-radius: 5px;
+    padding: 4px 10px;
+    font-size: 11px;
+    width: 200px;
+    font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+    background: #fafafa;
+  }
+
+  .desktop-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .desktop-table th {
+    text-align: left;
+    padding: 7px 12px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #888;
+    background: #f8f8f8;
+    border-bottom: 1px solid #e8e8e8;
+  }
+  .desktop-table td {
+    padding: 6px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    font-variant-numeric: tabular-nums;
+  }
+  .desktop-table tr:hover { background: #f5f8ff; }
+  .desktop-table .dt-mono { font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+  .desktop-table .dt-green { color: #248a3d; }
+  .desktop-table .dt-blue { color: #0066cc; }
+  .desktop-table .dt-muted { color: #999; }
+  .desktop-table .dt-right { text-align: right; }
+
+  .desktop-warn-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 14px;
+    font-size: 11px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .desktop-warn-row:last-child { border-bottom: none; }
+  .desktop-warn-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ff9500;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .desktop-warn-days {
+    font-weight: 600;
+    color: #ff9500;
+  }
+
+  .desktop-statusbar {
+    background: #e2e2e2;
+    border-top: 1px solid #c8c8c8;
+    padding: 4px 16px;
+    font-size: 11px;
+    color: #666;
+    display: flex;
+    justify-content: space-between;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Comparison Header ── -->
+<div class="comparison-header">
+  <h1>Fixed Advances App — UI Style Comparison</h1>
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('tui')">
+      Terminal TUI <span class="tab-tag">PYTHON + TEXTUAL</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('web')">
+      Web UI <span class="tab-tag">PYTHON + FLASK</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('desktop')">
+      Desktop App <span class="tab-tag">TAURI / ELECTRON</span>
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     TAB 1: TERMINAL TUI
+     ═══════════════════════════════════════════ -->
+<div id="tab-tui" class="tab-panel active">
+  <div class="tui">
+    <div class="tui-title-bar">
+      <span>Fixed Advances Manager v1.0</span>
+      <span>Dashboard</span>
+    </div>
+    <div class="tui-screen">
+      <!-- Summary Cards -->
+      <div class="tui-box">
+        <div class="tui-box-title">Portfolio Summary</div>
+        <div class="tui-cards">
+          <div class="tui-card">
+            <div class="tui-card-label">Active CHF</div>
+            <div class="tui-card-value">262,000,000</div>
+          </div>
+          <div class="tui-card">
+            <div class="tui-card-label">Active EUR</div>
+            <div class="tui-card-value info">45,000,000</div>
+          </div>
+          <div class="tui-card">
+            <div class="tui-card-label">Active Instruments</div>
+            <div class="tui-card-value">6</div>
+          </div>
+          <div class="tui-card">
+            <div class="tui-card-label">Upcoming Continuations</div>
+            <div class="tui-card-value warn">2</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Instruments Table -->
+      <div class="tui-box">
+        <div class="tui-box-title">Active Fixed Advances</div>
+        <table>
+          <tr>
+            <th>ID</th>
+            <th>Bank</th>
+            <th>Credit Line</th>
+            <th>Ccy</th>
+            <th style="text-align:right">Amount</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Continuation</th>
+            <th style="text-align:right">Rate p.a.</th>
+          </tr>
+          <tr>
+            <td class="id">FV0068</td>
+            <td>CONSORTIUM</td>
+            <td>CL001</td>
+            <td>CHF</td>
+            <td class="amt">80,000,000</td>
+            <td class="dt">2026-01-15</td>
+            <td class="dt">2026-03-15</td>
+            <td class="dt">2026-03-11</td>
+            <td class="rate">1.6800%</td>
+          </tr>
+          <tr>
+            <td class="id">FV0069</td>
+            <td>UBS</td>
+            <td>CL002</td>
+            <td>CHF</td>
+            <td class="amt">100,000,000</td>
+            <td class="dt">2025-12-20</td>
+            <td class="dt">2026-03-20</td>
+            <td class="dt">2026-03-17</td>
+            <td class="rate">1.7200%</td>
+          </tr>
+          <tr class="highlight">
+            <td class="id">FV0070</td>
+            <td>ZKB</td>
+            <td>CL003</td>
+            <td>CHF</td>
+            <td class="amt">82,000,000</td>
+            <td class="dt">2026-01-06</td>
+            <td class="dt">2026-02-20</td>
+            <td class="dt">2026-02-17</td>
+            <td class="rate">1.6500%</td>
+          </tr>
+          <tr class="highlight">
+            <td class="id">FV0071</td>
+            <td>CONSORTIUM</td>
+            <td>CL001</td>
+            <td>EUR</td>
+            <td class="amt">15,000,000</td>
+            <td class="dt">2026-01-10</td>
+            <td class="dt">2026-02-19</td>
+            <td class="dt">2026-02-16</td>
+            <td class="rate">2.8900%</td>
+          </tr>
+          <tr>
+            <td class="id">FV0072</td>
+            <td>UBS</td>
+            <td>CL004</td>
+            <td>EUR</td>
+            <td class="amt">30,000,000</td>
+            <td class="dt">2026-01-20</td>
+            <td class="dt">2026-04-20</td>
+            <td class="dt">2026-04-15</td>
+            <td class="rate">2.9500%</td>
+          </tr>
+          <tr>
+            <td class="id">FV0073</td>
+            <td>CREDIT SUISSE</td>
+            <td>CL005</td>
+            <td>CHF</td>
+            <td class="amt">182,000,000</td>
+            <td class="dt">2026-02-01</td>
+            <td class="dt">2026-05-01</td>
+            <td class="dt">2026-04-28</td>
+            <td class="rate">1.5800%</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- New Fixed Advance Form -->
+      <div class="tui-box">
+        <div class="tui-box-title">New Fixed Advance</div>
+        <div class="tui-form">
+          <div class="tui-field">
+            <label>Bank</label>
+            <select><option>CONSORTIUM</option><option>UBS</option><option>ZKB</option><option>CREDIT SUISSE</option></select>
+          </div>
+          <div class="tui-field">
+            <label>Credit Line</label>
+            <select><option>CL001 — Syndicated</option><option>CL002 — UBS Bilateral</option><option>CL003 — ZKB Bilateral</option></select>
+          </div>
+          <div class="tui-field">
+            <label>Currency</label>
+            <select><option>CHF</option><option>EUR</option></select>
+          </div>
+          <div class="tui-field">
+            <label>Start Date</label>
+            <input type="text" value="2026-02-13" />
+          </div>
+          <div class="tui-field">
+            <label>End Date</label>
+            <input type="text" value="2026-05-13" />
+          </div>
+          <div class="tui-field">
+            <label>Continuation Date</label>
+            <input type="text" value="2026-05-08" style="color: #f1fa8c;" />
+          </div>
+          <div class="tui-field">
+            <label>Amount</label>
+            <input type="text" value="50,000,000" />
+          </div>
+          <div class="tui-field">
+            <label>Interest Amount</label>
+            <input type="text" value="196,527.78" />
+          </div>
+          <div class="tui-field">
+            <label>&nbsp;</label>
+            <div style="padding-top: 4px; color: #6272a4; font-size: 11px;">Tab: next field &middot; Enter: save</div>
+          </div>
+          <div class="tui-calc">
+            Calculated: <span>Days: 89</span> <span>Rate p.a.: 1.5900%</span> <span>Desc: CHF 50m 2026-02-13 — 2026-05-13</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status Bar -->
+      <div class="tui-status-bar">
+        <div class="tui-hotkeys">
+          <span><kbd>N</kbd> New Advance</span>
+          <span><kbd>C</kbd> Credit Lines</span>
+          <span><kbd>I</kbd> Import</span>
+          <span><kbd>E</kbd> Export</span>
+          <span><kbd>?</kbd> Help</span>
+          <span><kbd>Q</kbd> Quit</span>
+        </div>
+        <div>73 advances &middot; 5 credit lines &middot; Auto-export: ON</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     TAB 2: WEB UI
+     ═══════════════════════════════════════════ -->
+<div id="tab-web" class="tab-panel">
+  <div class="web-ui">
+    <div class="web-sidebar">
+      <div class="web-sidebar-logo">
+        Fixed Advances
+        <small>Treasury Management</small>
+      </div>
+      <div class="web-nav-item active">
+        <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+        Dashboard
+        <span class="web-nav-badge">2</span>
+      </div>
+      <div class="web-nav-item">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2zm0 4h12v2H2zm0 4h8v2H2z"/></svg>
+        Fixed Advances
+      </div>
+      <div class="web-nav-item">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 2a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V3a1 1 0 00-1-1H3zm1 2h8v2H4V4z"/></svg>
+        Credit Lines
+      </div>
+      <div class="web-nav-item">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1l2 5h5l-4 3 1.5 5L8 11l-4.5 3L5 9 1 6h5z"/></svg>
+        Import
+      </div>
+      <div class="web-nav-item" style="margin-top: auto; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 14px;">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 2.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM5.5 10c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5H5.5z"/></svg>
+        Settings
+      </div>
+    </div>
+
+    <div class="web-main">
+      <!-- Top Bar -->
+      <div class="web-topbar">
+        <h2>Dashboard</h2>
+        <div class="web-topbar-actions">
+          <button class="btn-secondary" onclick="document.getElementById('web-modal').classList.remove('show')">Export for Power BI</button>
+          <button class="btn-primary" onclick="document.getElementById('web-modal').classList.add('show')">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>
+            New Advance
+          </button>
+        </div>
+      </div>
+
+      <!-- Summary Cards -->
+      <div class="web-cards">
+        <div class="web-card">
+          <div class="web-card-label">Active CHF</div>
+          <div class="web-card-value chf">262M</div>
+          <div class="web-card-sub">3 instruments</div>
+        </div>
+        <div class="web-card">
+          <div class="web-card-label">Active EUR</div>
+          <div class="web-card-value eur">45M</div>
+          <div class="web-card-sub">2 instruments</div>
+        </div>
+        <div class="web-card alert-card">
+          <div class="web-card-label">Continuations Due</div>
+          <div class="web-card-value">2</div>
+          <div class="web-card-sub">within next 7 days</div>
+        </div>
+        <div class="web-card">
+          <div class="web-card-label">CL Utilization (CHF eq.)</div>
+          <div class="web-card-value">54%</div>
+          <div class="web-card-sub">307M / 570M</div>
+        </div>
+      </div>
+
+      <!-- Alert Box -->
+      <div class="web-alert-box">
+        <div class="web-alert-title">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="#c2410c"><path d="M7 0a7 7 0 100 14A7 7 0 007 0zm0 3a1 1 0 011 1v3a1 1 0 01-2 0V4a1 1 0 011-1zm0 7a1 1 0 110 2 1 1 0 010-2z"/></svg>
+          Upcoming Continuations
+        </div>
+        <div class="web-alert-item">
+          <span><strong>FV0071</strong> &nbsp; CONSORTIUM &middot; EUR 15,000,000</span>
+          <span style="color: #e94560; font-weight: 600;">Due Feb 16 (3 days)</span>
+        </div>
+        <div class="web-alert-item">
+          <span><strong>FV0070</strong> &nbsp; ZKB &middot; CHF 82,000,000</span>
+          <span style="color: #c2410c; font-weight: 600;">Due Feb 17 (4 days)</span>
+        </div>
+      </div>
+
+      <!-- Active Instruments Table -->
+      <div class="web-section">
+        <div class="web-section-header">
+          <h3>Active Instruments</h3>
+          <div class="web-filter-pills">
+            <span class="web-pill active">All</span>
+            <span class="web-pill">CHF</span>
+            <span class="web-pill">EUR</span>
+          </div>
+        </div>
+        <table class="web-table">
+          <tr>
+            <th>ID</th>
+            <th>Bank</th>
+            <th>Credit Line</th>
+            <th>Currency</th>
+            <th style="text-align:right">Amount</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Continuation</th>
+            <th style="text-align:right">Rate p.a.</th>
+          </tr>
+          <tr>
+            <td class="mono text-muted">FV0068</td>
+            <td>CONSORTIUM</td>
+            <td class="text-muted">CL001</td>
+            <td><span class="web-badge web-badge-chf">CHF</span></td>
+            <td class="mono text-right text-green">80,000,000</td>
+            <td>Jan 15, 2026</td>
+            <td>Mar 15, 2026</td>
+            <td>Mar 11, 2026</td>
+            <td class="mono text-right">1.6800%</td>
+          </tr>
+          <tr>
+            <td class="mono text-muted">FV0069</td>
+            <td>UBS</td>
+            <td class="text-muted">CL002</td>
+            <td><span class="web-badge web-badge-chf">CHF</span></td>
+            <td class="mono text-right text-green">100,000,000</td>
+            <td>Dec 20, 2025</td>
+            <td>Mar 20, 2026</td>
+            <td>Mar 17, 2026</td>
+            <td class="mono text-right">1.7200%</td>
+          </tr>
+          <tr style="background: #fff8f0;">
+            <td class="mono text-muted">FV0070</td>
+            <td>ZKB</td>
+            <td class="text-muted">CL003</td>
+            <td><span class="web-badge web-badge-chf">CHF</span></td>
+            <td class="mono text-right text-green">82,000,000</td>
+            <td>Jan 06, 2026</td>
+            <td>Feb 20, 2026</td>
+            <td style="color: #c2410c; font-weight: 600;">Feb 17, 2026</td>
+            <td class="mono text-right">1.6500%</td>
+          </tr>
+          <tr style="background: #fff8f0;">
+            <td class="mono text-muted">FV0071</td>
+            <td>CONSORTIUM</td>
+            <td class="text-muted">CL001</td>
+            <td><span class="web-badge web-badge-eur">EUR</span></td>
+            <td class="mono text-right text-blue">15,000,000</td>
+            <td>Jan 10, 2026</td>
+            <td>Feb 19, 2026</td>
+            <td style="color: #e94560; font-weight: 600;">Feb 16, 2026</td>
+            <td class="mono text-right">2.8900%</td>
+          </tr>
+          <tr>
+            <td class="mono text-muted">FV0072</td>
+            <td>UBS</td>
+            <td class="text-muted">CL004</td>
+            <td><span class="web-badge web-badge-eur">EUR</span></td>
+            <td class="mono text-right text-blue">30,000,000</td>
+            <td>Jan 20, 2026</td>
+            <td>Apr 20, 2026</td>
+            <td>Apr 15, 2026</td>
+            <td class="mono text-right">2.9500%</td>
+          </tr>
+          <tr>
+            <td class="mono text-muted">FV0073</td>
+            <td>CREDIT SUISSE</td>
+            <td class="text-muted">CL005</td>
+            <td><span class="web-badge web-badge-chf">CHF</span></td>
+            <td class="mono text-right text-green">182,000,000</td>
+            <td>Feb 01, 2026</td>
+            <td>May 01, 2026</td>
+            <td>Apr 28, 2026</td>
+            <td class="mono text-right">1.5800%</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Slide-out Modal -->
+      <div id="web-modal" class="web-modal-overlay">
+        <div class="web-modal-panel">
+          <h3>
+            New Fixed Advance
+            <button class="web-modal-close" onclick="document.getElementById('web-modal').classList.remove('show')">&times;</button>
+          </h3>
+
+          <div class="web-form-row">
+            <div class="web-form-group">
+              <label>Bank</label>
+              <select>
+                <option>CONSORTIUM</option>
+                <option>UBS</option>
+                <option>ZKB</option>
+                <option>CREDIT SUISSE</option>
+              </select>
+            </div>
+            <div class="web-form-group">
+              <label>Credit Line</label>
+              <select>
+                <option>CL001 — Syndicated 510M</option>
+                <option>CL002 — UBS 30M</option>
+                <option>CL003 — ZKB 30M</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="web-form-group">
+            <label>Currency</label>
+            <select><option>CHF</option><option>EUR</option></select>
+          </div>
+
+          <div class="web-form-row">
+            <div class="web-form-group">
+              <label>Start Date</label>
+              <input type="date" value="2026-02-13" />
+            </div>
+            <div class="web-form-group">
+              <label>End Date</label>
+              <input type="date" value="2026-05-13" />
+            </div>
+          </div>
+
+          <div class="web-form-group">
+            <label>Continuation Date</label>
+            <input type="date" value="2026-05-08" style="color: #0d7c5f;" />
+            <div class="web-form-hint">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="#0d7c5f"><circle cx="5" cy="5" r="4"/></svg>
+              Suggested: 3 business days before maturity
+              <span class="edit-icon">&#9998;</span>
+            </div>
+          </div>
+
+          <div class="web-form-row">
+            <div class="web-form-group">
+              <label>Amount</label>
+              <input type="text" value="50,000,000" />
+            </div>
+            <div class="web-form-group">
+              <label>Interest Amount</label>
+              <input type="text" value="196,527.78" />
+            </div>
+          </div>
+
+          <div class="web-calc-preview">
+            <div>
+              <div class="web-calc-item-label">Days</div>
+              <div class="web-calc-item-value">89</div>
+            </div>
+            <div>
+              <div class="web-calc-item-label">Rate p.a. (calc)</div>
+              <div class="web-calc-item-value">1.5900%</div>
+            </div>
+          </div>
+
+          <div class="web-form-actions">
+            <button class="btn-secondary" onclick="document.getElementById('web-modal').classList.remove('show')">Cancel</button>
+            <button class="btn-primary">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 7 5.5 10.5 12 4"/></svg>
+              Save Advance
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     TAB 3: DESKTOP APP
+     ═══════════════════════════════════════════ -->
+<div id="tab-desktop" class="tab-panel">
+  <div class="desktop-app">
+    <!-- macOS-style Title Bar -->
+    <div class="desktop-titlebar">
+      <div class="desktop-traffic-lights">
+        <div class="traffic-light tl-close"></div>
+        <div class="traffic-light tl-min"></div>
+        <div class="traffic-light tl-max"></div>
+      </div>
+      <span class="desktop-titlebar-text">Fixed Advances Manager</span>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="desktop-toolbar">
+      <button class="desktop-tool-btn">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>
+        New
+      </button>
+      <button class="desktop-tool-btn">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 10V12h10V10M7 2v7M4 6l3 3 3-3"/></svg>
+        Import
+      </button>
+      <div class="desktop-tool-sep"></div>
+      <button class="desktop-tool-btn">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4V2h10v2M7 12V5M4 8l3-3 3 3"/></svg>
+        Export for PBI
+      </button>
+      <div class="desktop-tool-sep"></div>
+      <button class="desktop-tool-btn">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="M7 4v3l2 2"/></svg>
+        Refresh FX
+      </button>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="desktop-tabs">
+      <button class="desktop-tab active">
+        Dashboard
+        <span class="dtab-badge">2</span>
+      </button>
+      <button class="desktop-tab">Fixed Advances</button>
+      <button class="desktop-tab">Credit Lines</button>
+      <button class="desktop-tab">Banks</button>
+    </div>
+
+    <!-- Dashboard Content -->
+    <div class="desktop-content">
+      <!-- Summary Cards -->
+      <div class="desktop-cards">
+        <div class="desktop-card">
+          <div class="desktop-card-label">Active CHF</div>
+          <div class="desktop-card-value dv-chf">262,000,000</div>
+        </div>
+        <div class="desktop-card">
+          <div class="desktop-card-label">Active EUR</div>
+          <div class="desktop-card-value dv-eur">45,000,000</div>
+        </div>
+        <div class="desktop-card">
+          <div class="desktop-card-label">Continuations &le; 7d</div>
+          <div class="desktop-card-value dv-warn">2</div>
+        </div>
+        <div class="desktop-card">
+          <div class="desktop-card-label">CL Utilization</div>
+          <div class="desktop-card-value dv-util">54%</div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 280px; gap: 12px;">
+        <!-- Active Instruments -->
+        <div class="desktop-panel">
+          <div class="desktop-panel-header">
+            <h4>Active Instruments (6)</h4>
+            <input class="desktop-search" type="text" placeholder="Filter..." />
+          </div>
+          <table class="desktop-table">
+            <tr>
+              <th>ID</th>
+              <th>Bank</th>
+              <th>CL</th>
+              <th>Ccy</th>
+              <th style="text-align:right">Amount</th>
+              <th>Start</th>
+              <th>End</th>
+              <th>Cont.</th>
+              <th style="text-align:right">Rate</th>
+            </tr>
+            <tr>
+              <td class="dt-mono dt-muted">FV0068</td>
+              <td>CONSORTIUM</td>
+              <td class="dt-muted">CL001</td>
+              <td>CHF</td>
+              <td class="dt-mono dt-right dt-green">80,000,000</td>
+              <td>15.01.26</td>
+              <td>15.03.26</td>
+              <td>11.03.26</td>
+              <td class="dt-mono dt-right">1.68%</td>
+            </tr>
+            <tr>
+              <td class="dt-mono dt-muted">FV0069</td>
+              <td>UBS</td>
+              <td class="dt-muted">CL002</td>
+              <td>CHF</td>
+              <td class="dt-mono dt-right dt-green">100,000,000</td>
+              <td>20.12.25</td>
+              <td>20.03.26</td>
+              <td>17.03.26</td>
+              <td class="dt-mono dt-right">1.72%</td>
+            </tr>
+            <tr style="background: #fff8f0;">
+              <td class="dt-mono dt-muted">FV0070</td>
+              <td>ZKB</td>
+              <td class="dt-muted">CL003</td>
+              <td>CHF</td>
+              <td class="dt-mono dt-right dt-green">82,000,000</td>
+              <td>06.01.26</td>
+              <td>20.02.26</td>
+              <td style="color:#ff9500;font-weight:600">17.02.26</td>
+              <td class="dt-mono dt-right">1.65%</td>
+            </tr>
+            <tr style="background: #fff8f0;">
+              <td class="dt-mono dt-muted">FV0071</td>
+              <td>CONSORTIUM</td>
+              <td class="dt-muted">CL001</td>
+              <td>EUR</td>
+              <td class="dt-mono dt-right dt-blue">15,000,000</td>
+              <td>10.01.26</td>
+              <td>19.02.26</td>
+              <td style="color:#ff3b30;font-weight:600">16.02.26</td>
+              <td class="dt-mono dt-right">2.89%</td>
+            </tr>
+            <tr>
+              <td class="dt-mono dt-muted">FV0072</td>
+              <td>UBS</td>
+              <td class="dt-muted">CL004</td>
+              <td>EUR</td>
+              <td class="dt-mono dt-right dt-blue">30,000,000</td>
+              <td>20.01.26</td>
+              <td>20.04.26</td>
+              <td>15.04.26</td>
+              <td class="dt-mono dt-right">2.95%</td>
+            </tr>
+            <tr>
+              <td class="dt-mono dt-muted">FV0073</td>
+              <td>CREDIT SUISSE</td>
+              <td class="dt-muted">CL005</td>
+              <td>CHF</td>
+              <td class="dt-mono dt-right dt-green">182,000,000</td>
+              <td>01.02.26</td>
+              <td>01.05.26</td>
+              <td>28.04.26</td>
+              <td class="dt-mono dt-right">1.58%</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Right Sidebar -->
+        <div>
+          <div class="desktop-panel">
+            <div class="desktop-panel-header">
+              <h4>Upcoming Continuations</h4>
+            </div>
+            <div class="desktop-warn-row">
+              <span><span class="desktop-warn-dot" style="background:#ff3b30"></span> FV0071 &middot; EUR 15M</span>
+              <span class="desktop-warn-days" style="color:#ff3b30">3 days</span>
+            </div>
+            <div class="desktop-warn-row">
+              <span><span class="desktop-warn-dot"></span> FV0070 &middot; CHF 82M</span>
+              <span class="desktop-warn-days">4 days</span>
+            </div>
+          </div>
+
+          <div class="desktop-panel">
+            <div class="desktop-panel-header">
+              <h4>Credit Line Usage</h4>
+            </div>
+            <div style="padding: 10px 14px;">
+              <div style="margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+                  <span style="font-weight: 600;">CL001 Syndicated</span>
+                  <span style="color: #888;">95M / 510M</span>
+                </div>
+                <div style="background: #eee; border-radius: 3px; height: 6px; overflow: hidden;">
+                  <div style="background: #248a3d; height: 100%; width: 18.6%; border-radius: 3px;"></div>
+                </div>
+              </div>
+              <div style="margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+                  <span style="font-weight: 600;">CL002 UBS</span>
+                  <span style="color: #888;">100M / 30M</span>
+                </div>
+                <div style="background: #eee; border-radius: 3px; height: 6px; overflow: hidden;">
+                  <div style="background: #ff3b30; height: 100%; width: 100%; border-radius: 3px;"></div>
+                </div>
+              </div>
+              <div style="margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+                  <span style="font-weight: 600;">CL003 ZKB</span>
+                  <span style="color: #888;">82M / 30M</span>
+                </div>
+                <div style="background: #eee; border-radius: 3px; height: 6px; overflow: hidden;">
+                  <div style="background: #ff3b30; height: 100%; width: 100%; border-radius: 3px;"></div>
+                </div>
+              </div>
+              <div style="margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+                  <span style="font-weight: 600;">CL004 UBS EUR</span>
+                  <span style="color: #888;">30M / 50M</span>
+                </div>
+                <div style="background: #eee; border-radius: 3px; height: 6px; overflow: hidden;">
+                  <div style="background: #0066cc; height: 100%; width: 60%; border-radius: 3px;"></div>
+                </div>
+              </div>
+              <div>
+                <div style="display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px;">
+                  <span style="font-weight: 600;">CL005 CS</span>
+                  <span style="color: #888;">182M / 200M</span>
+                </div>
+                <div style="background: #eee; border-radius: 3px; height: 6px; overflow: hidden;">
+                  <div style="background: #ff9500; height: 100%; width: 91%; border-radius: 3px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="text-align: center; padding: 8px; font-size: 11px; color: #999;">
+            EUR/CHF: 0.9387 &middot; ECB 13.02.2026
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="desktop-statusbar">
+      <span>73 advances &middot; 5 credit lines &middot; Last export: 13.02.2026 14:32</span>
+      <span>Auto-export: ON &middot; /Users/deni/Documents/pbi-export.xlsx</span>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  const idx = { tui: 0, web: 1, desktop: 2 }[id];
+  document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+}
+</script>
+</body>
+</html>

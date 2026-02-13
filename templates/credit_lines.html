@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+{% set active_page = "credit_lines" %}
+
+{% block title %}Credit Lines — Fixed Advances{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <h2>Credit Lines</h2>
+  <div class="topbar-actions">
+    <button class="btn-primary" onclick="openCLForm()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>
+      New Credit Line
+    </button>
+  </div>
+</div>
+
+<div class="section">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Bank</th>
+        <th>Description</th>
+        <th>Currency</th>
+        <th style="text-align:right">Amount</th>
+        <th>Committed</th>
+        <th>Start</th>
+        <th>End</th>
+        <th style="text-align:right">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cl in lines %}
+      <tr>
+        <td class="mono text-muted">{{ cl.id }}</td>
+        <td>{{ cl.bank_name or cl.bank_key }}</td>
+        <td>{{ cl.description or '' }}</td>
+        <td><span class="badge badge-{{ cl.currency|lower }}">{{ cl.currency }}</span></td>
+        <td class="mono text-right {{ 'text-green' if cl.currency == 'CHF' else 'text-blue' }}">{{ cl.amount|amount }}</td>
+        <td>{{ cl.committed }}</td>
+        <td>{{ cl.start_date|date_display }}</td>
+        <td>{{ cl.end_date|date_display if cl.end_date else '—' }}</td>
+        <td>
+          <div class="row-actions">
+            <button onclick="editCL('{{ cl.id }}')" title="Edit">&#9998;</button>
+            <button class="delete" onclick="deleteCL('{{ cl.id }}')" title="Delete">&times;</button>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="9">
+          <div class="empty-state">
+            <p>No credit lines yet.</p>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Slide-out Panel -->
+<div class="panel-overlay" id="cl-panel">
+  <div class="slide-panel">
+    <h3>
+      <span id="cl-form-title">New Credit Line</span>
+      <button class="panel-close" onclick="closeCLForm()">&times;</button>
+    </h3>
+    <form id="cl-form" onsubmit="saveCL(event)">
+      <input type="hidden" id="cl-edit-id" value="" />
+      <div class="form-group">
+        <label>Bank</label>
+        <select id="cl-bank" required>
+          <option value="">Select bank...</option>
+          {% for bank in banks %}
+          <option value="{{ bank.bank_key }}">{{ bank.bank_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <input type="text" id="cl-description" placeholder="e.g. Syndicated Facility" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Currency</label>
+          <select id="cl-currency" required>
+            <option value="CHF">CHF</option>
+            <option value="EUR">EUR</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Amount</label>
+          <input type="number" id="cl-amount" required min="1" placeholder="e.g. 510000000" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Committed</label>
+        <select id="cl-committed" required>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Start Date</label>
+          <input type="date" id="cl-start" required />
+        </div>
+        <div class="form-group">
+          <label>End Date (optional)</label>
+          <input type="date" id="cl-end" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Note</label>
+        <textarea id="cl-note" placeholder="Optional notes..."></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" onclick="closeCLForm()">Cancel</button>
+        <button type="submit" class="btn-primary">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 7 5.5 10.5 12 4"/></svg>
+          Save
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let editingCLId = null;
+
+function openCLForm() {
+  editingCLId = null;
+  document.getElementById('cl-form-title').textContent = 'New Credit Line';
+  document.getElementById('cl-form').reset();
+  document.getElementById('cl-edit-id').value = '';
+  document.getElementById('cl-panel').classList.add('show');
+}
+
+function closeCLForm() {
+  document.getElementById('cl-panel').classList.remove('show');
+}
+
+async function editCL(id) {
+  const res = await fetch('/credit-lines/' + id);
+  if (!res.ok) return;
+  const data = await res.json();
+  editingCLId = id;
+  document.getElementById('cl-form-title').textContent = 'Edit ' + id;
+  document.getElementById('cl-edit-id').value = id;
+  document.getElementById('cl-bank').value = data.bank_key;
+  document.getElementById('cl-description').value = data.description || '';
+  document.getElementById('cl-currency').value = data.currency;
+  document.getElementById('cl-amount').value = data.amount;
+  document.getElementById('cl-committed').value = data.committed;
+  document.getElementById('cl-start').value = data.start_date;
+  document.getElementById('cl-end').value = data.end_date || '';
+  document.getElementById('cl-note').value = data.note || '';
+  document.getElementById('cl-panel').classList.add('show');
+}
+
+async function saveCL(e) {
+  e.preventDefault();
+  const data = {
+    bank_key: document.getElementById('cl-bank').value,
+    description: document.getElementById('cl-description').value,
+    currency: document.getElementById('cl-currency').value,
+    amount: parseInt(document.getElementById('cl-amount').value),
+    committed: document.getElementById('cl-committed').value,
+    start_date: document.getElementById('cl-start').value,
+    end_date: document.getElementById('cl-end').value || null,
+    note: document.getElementById('cl-note').value || null,
+  };
+  const id = document.getElementById('cl-edit-id').value;
+  const url = id ? '/credit-lines/' + id : '/credit-lines';
+  const method = id ? 'PUT' : 'POST';
+  const res = await fetch(url, {
+    method,
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data)
+  });
+  if (res.ok) location.reload();
+}
+
+async function deleteCL(id) {
+  if (!confirm('Delete credit line ' + id + '?')) return;
+  const res = await fetch('/credit-lines/' + id, { method: 'DELETE' });
+  if (res.ok) location.reload();
+}
+</script>
+{% endblock %}

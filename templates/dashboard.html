@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% set active_page = "dashboard" %}
+{% set alert_count = alerts|length %}
+
+{% block title %}Dashboard — Fixed Advances{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <h2>Dashboard</h2>
+  <div class="topbar-actions">
+    <a href="/advances" class="btn-primary" onclick="return true;">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>
+      New Advance
+    </a>
+  </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="cards">
+  <div class="card">
+    <div class="card-label">Active CHF</div>
+    <div class="card-value chf">{{ (totals.get('CHF', {}).get('total', 0))|amount_short }}</div>
+    <div class="card-sub">{{ totals.get('CHF', {}).get('count', 0) }} instrument{{ 's' if totals.get('CHF', {}).get('count', 0) != 1 }}</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Active EUR</div>
+    <div class="card-value eur">{{ (totals.get('EUR', {}).get('total', 0))|amount_short }}</div>
+    <div class="card-sub">{{ totals.get('EUR', {}).get('count', 0) }} instrument{{ 's' if totals.get('EUR', {}).get('count', 0) != 1 }}</div>
+  </div>
+  <div class="card {{ 'alert-card' if alerts }}">
+    <div class="card-label">Continuations Due</div>
+    <div class="card-value">{{ alerts|length }}</div>
+    <div class="card-sub">within next 7 days</div>
+  </div>
+  <div class="card">
+    <div class="card-label">CL Utilization (CHF eq.)</div>
+    {% if utilization %}
+      {% set ns = namespace(drawn=0, facility=0) %}
+      {% for u in utilization %}
+        {% if u.currency == 'EUR' and ecb_rate %}
+          {% set ns.drawn = ns.drawn + u.drawn_amount * ecb_rate %}
+          {% set ns.facility = ns.facility + u.facility_amount * ecb_rate %}
+        {% else %}
+          {% set ns.drawn = ns.drawn + u.drawn_amount %}
+          {% set ns.facility = ns.facility + u.facility_amount %}
+        {% endif %}
+      {% endfor %}
+      <div class="card-value">{{ ((ns.drawn / ns.facility * 100) if ns.facility > 0 else 0)|round|int }}%</div>
+      <div class="card-sub">{{ ns.drawn|int|amount_short }} / {{ ns.facility|int|amount_short }}</div>
+    {% else %}
+      <div class="card-value">—</div>
+      <div class="card-sub">No credit lines</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Continuation Alerts -->
+{% if alerts %}
+<div class="alert-box">
+  <div class="alert-title">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="#A62152"><path d="M7 0a7 7 0 100 14A7 7 0 007 0zm0 3a1 1 0 011 1v3a1 1 0 01-2 0V4a1 1 0 011-1zm0 7a1 1 0 110 2 1 1 0 010-2z"/></svg>
+    Upcoming Continuations
+  </div>
+  {% for a in alerts %}
+  <div class="alert-item">
+    <span><strong>{{ a.id }}</strong> &nbsp; {{ a.bank }} &middot; {{ a.currency }} {{ a.amount_original|amount }}</span>
+    <span style="color: #A62152; font-weight: 700;">
+      Due {{ a.continuation_date|date_display }}
+    </span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Active Instruments Table -->
+<div class="section">
+  <div class="section-header">
+    <h3>Active Instruments ({{ active|length }})</h3>
+    <div class="filter-pills">
+      <span class="pill active" onclick="filterDash('all', this)">All</span>
+      <span class="pill" onclick="filterDash('CHF', this)">CHF</span>
+      <span class="pill" onclick="filterDash('EUR', this)">EUR</span>
+    </div>
+  </div>
+  <table class="data-table" id="dash-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Bank</th>
+        <th>Credit Line</th>
+        <th>Currency</th>
+        <th style="text-align:right">Amount</th>
+        <th>Start</th>
+        <th>End</th>
+        <th>Continuation</th>
+        <th style="text-align:right">Rate p.a.</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for adv in active %}
+      {% set is_alert = adv.id in alerts|map(attribute='id')|list %}
+      <tr class="{{ 'alert-row' if is_alert }}" data-currency="{{ adv.currency }}">
+        <td class="mono text-muted">{{ adv.id }}</td>
+        <td>{{ adv.bank }}</td>
+        <td class="text-muted">{{ adv.credit_line_id }}</td>
+        <td><span class="badge badge-{{ adv.currency|lower }}">{{ adv.currency }}</span></td>
+        <td class="mono text-right {{ 'text-green' if adv.currency == 'CHF' else 'text-blue' }}">{{ adv.amount_original|amount }}</td>
+        <td>{{ adv.start_date|date_display }}</td>
+        <td>{{ adv.end_date|date_display }}</td>
+        <td class="{{ 'text-alert' if is_alert }}">{{ adv.continuation_date|date_display }}</td>
+        <td class="mono text-right">{{ adv.rate_pa|rate }}</td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="9">
+          <div class="empty-state">
+            <p>No active instruments.</p>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Credit Line Utilization -->
+{% if utilization %}
+<div class="section">
+  <div class="section-header">
+    <h3>Credit Line Utilization</h3>
+  </div>
+  <div style="padding: 16px 20px;">
+    {% for u in utilization %}
+    {% set pct = (u.drawn_amount / u.facility_amount * 100) if u.facility_amount > 0 else 0 %}
+    <div class="util-item">
+      <div class="util-header">
+        <strong>{{ u.id }} {{ u.description or '' }}</strong>
+        <span>{{ u.drawn_amount|amount_short }} / {{ u.facility_amount|amount_short }} {{ u.currency }}</span>
+      </div>
+      <div class="util-bar">
+        <div class="util-bar-fill {{ 'over' if pct > 100 else 'warn' if pct > 80 else ('blue' if u.currency == 'EUR' else 'green') }}"
+             style="width: {{ [pct, 100]|min }}%"></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if ecb_rate %}
+<div class="ecb-footer">
+  EUR/CHF: {{ "%.4f"|format(ecb_rate) }} &middot; ECB {{ ecb_date or '' }}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterDash(filter, pill) {
+  document.querySelectorAll('.section-header .filter-pills .pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  document.querySelectorAll('#dash-table tbody tr').forEach(row => {
+    if (filter === 'all') {
+      row.style.display = '';
+    } else {
+      row.style.display = row.dataset.currency === filter ? '' : 'none';
+    }
+  });
+}
+</script>
+{% endblock %}
