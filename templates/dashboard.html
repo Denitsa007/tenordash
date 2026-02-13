@@ -121,8 +121,9 @@
       </tr>
     </thead>
     <tbody>
+      {% set alert_ids = alerts|map(attribute='id')|list %}
       {% for adv in active %}
-      {% set is_alert = adv.id in alerts|map(attribute='id')|list %}
+      {% set is_alert = adv.id in alert_ids %}
       <tr class="{{ 'alert-row' if is_alert }}" data-currency="{{ adv.currency }}">
         <td class="mono text-muted">{{ adv.id }}</td>
         <td>{{ adv.bank }}</td>
