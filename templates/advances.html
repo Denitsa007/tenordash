@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+{% set active_page = "advances" %}
+
+{% block title %}Fixed Advances{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <h2>Fixed Advances</h2>
+  <div class="topbar-actions">
+    <button class="btn-primary" onclick="openAdvForm()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>
+      New Advance
+    </button>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <h3>All Advances ({{ advances|length }})</h3>
+    <div class="filter-pills">
+      <span class="pill active" data-filter="all" onclick="filterAdvances('all', this)">All</span>
+      <span class="pill" data-filter="active" onclick="filterAdvances('active', this)">Active</span>
+      <span class="pill" data-filter="CHF" onclick="filterAdvances('CHF', this)">CHF</span>
+      <span class="pill" data-filter="EUR" onclick="filterAdvances('EUR', this)">EUR</span>
+    </div>
+  </div>
+  <table class="data-table" id="advances-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Bank</th>
+        <th>Credit Line</th>
+        <th>Currency</th>
+        <th style="text-align:right">Amount</th>
+        <th>Start</th>
+        <th>End</th>
+        <th>Continuation</th>
+        <th style="text-align:right">Days</th>
+        <th style="text-align:right">Rate p.a.</th>
+        <th>Status</th>
+        <th style="text-align:right">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for adv in advances %}
+      <tr data-currency="{{ adv.currency }}" data-active="{{ 'true' if adv.active else 'false' }}">
+        <td class="mono text-muted">{{ adv.id }}</td>
+        <td>{{ adv.bank }}</td>
+        <td class="text-muted">{{ adv.credit_line_id }}</td>
+        <td><span class="badge badge-{{ adv.currency|lower }}">{{ adv.currency }}</span></td>
+        <td class="mono text-right {{ 'text-green' if adv.currency == 'CHF' else 'text-blue' }}">{{ adv.amount_original|amount }}</td>
+        <td>{{ adv.start_date|date_display }}</td>
+        <td>{{ adv.end_date|date_display }}</td>
+        <td>{{ adv.continuation_date|date_display }}</td>
+        <td class="mono text-right">{{ adv.days }}</td>
+        <td class="mono text-right">{{ adv.rate_pa|rate }}</td>
+        <td><span class="badge {{ 'badge-active' if adv.active else 'badge-expired' }}">{{ 'Active' if adv.active else 'Expired' }}</span></td>
+        <td>
+          <div class="row-actions">
+            <button onclick="editAdv('{{ adv.id }}')" title="Edit">&#9998;</button>
+            <button class="delete" onclick="deleteAdv('{{ adv.id }}')" title="Delete">&times;</button>
+          </div>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="12">
+          <div class="empty-state">
+            <p>No fixed advances yet.</p>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Slide-out Panel -->
+<div class="panel-overlay" id="adv-panel">
+  <div class="slide-panel">
+    <h3>
+      <span id="adv-form-title">New Fixed Advance</span>
+      <button class="panel-close" onclick="closeAdvForm()">&times;</button>
+    </h3>
+    <form id="adv-form" onsubmit="saveAdv(event)">
+      <input type="hidden" id="adv-edit-id" value="" />
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Bank</label>
+          <select id="adv-bank" required>
+            <option value="">Select bank...</option>
+            {% for bank in banks %}
+            <option value="{{ bank.bank_name }}">{{ bank.bank_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Credit Line</label>
+          <select id="adv-cl" required>
+            <option value="">Select...</option>
+            {% for cl in lines %}
+            <option value="{{ cl.id }}">{{ cl.id }} — {{ cl.description or cl.bank_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Currency</label>
+        <select id="adv-currency" required>
+          <option value="CHF">CHF</option>
+          <option value="EUR">EUR</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Start Date</label>
+          <input type="date" id="adv-start" required />
+        </div>
+        <div class="form-group">
+          <label>End Date</label>
+          <input type="date" id="adv-end" required onchange="suggestContinuation()" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Continuation Date</label>
+        <input type="date" id="adv-cont" required />
+        <div class="form-hint" id="cont-hint" style="display:none">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="#0d7c5f"><circle cx="5" cy="5" r="4"/></svg>
+          <span id="cont-hint-text"></span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Amount</label>
+          <input type="number" id="adv-amount" required min="1" placeholder="e.g. 50000000" oninput="updateCalcPreview()" />
+        </div>
+        <div class="form-group">
+          <label>Interest Amount</label>
+          <input type="number" id="adv-interest" required min="0" step="0.01" placeholder="e.g. 196527.78" oninput="updateCalcPreview()" />
+        </div>
+      </div>
+
+      <div class="calc-preview" id="calc-preview">
+        <div>
+          <div class="calc-label">Days</div>
+          <div class="calc-value" id="calc-days">—</div>
+        </div>
+        <div>
+          <div class="calc-label">Rate p.a. (calc)</div>
+          <div class="calc-value" id="calc-rate">—</div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" onclick="closeAdvForm()">Cancel</button>
+        <button type="submit" class="btn-primary">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 7 5.5 10.5 12 4"/></svg>
+          Save Advance
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openAdvForm() {
+  document.getElementById('adv-form-title').textContent = 'New Fixed Advance';
+  document.getElementById('adv-form').reset();
+  document.getElementById('adv-edit-id').value = '';
+  document.getElementById('cont-hint').style.display = 'none';
+  document.getElementById('calc-days').textContent = '—';
+  document.getElementById('calc-rate').textContent = '—';
+  document.getElementById('adv-panel').classList.add('show');
+}
+
+function closeAdvForm() {
+  document.getElementById('adv-panel').classList.remove('show');
+}
+
+async function editAdv(id) {
+  const res = await fetch('/advances/' + id);
+  if (!res.ok) return;
+  const d = await res.json();
+  document.getElementById('adv-form-title').textContent = 'Edit ' + id;
+  document.getElementById('adv-edit-id').value = id;
+  document.getElementById('adv-bank').value = d.bank;
+  document.getElementById('adv-cl').value = d.credit_line_id;
+  document.getElementById('adv-currency').value = d.currency;
+  document.getElementById('adv-start').value = d.start_date;
+  document.getElementById('adv-end').value = d.end_date;
+  document.getElementById('adv-cont').value = d.continuation_date;
+  document.getElementById('adv-amount').value = d.amount_original;
+  document.getElementById('adv-interest').value = d.interest_amount;
+  updateCalcPreview();
+  document.getElementById('adv-panel').classList.add('show');
+}
+
+async function saveAdv(e) {
+  e.preventDefault();
+  const data = {
+    bank: document.getElementById('adv-bank').value,
+    credit_line_id: document.getElementById('adv-cl').value,
+    currency: document.getElementById('adv-currency').value,
+    start_date: document.getElementById('adv-start').value,
+    end_date: document.getElementById('adv-end').value,
+    continuation_date: document.getElementById('adv-cont').value,
+    amount_original: parseInt(document.getElementById('adv-amount').value),
+    interest_amount: parseFloat(document.getElementById('adv-interest').value),
+  };
+  const id = document.getElementById('adv-edit-id').value;
+  const url = id ? '/advances/' + id : '/advances';
+  const method = id ? 'PUT' : 'POST';
+  const res = await fetch(url, {
+    method,
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data)
+  });
+  if (res.ok) location.reload();
+}
+
+async function deleteAdv(id) {
+  if (!confirm('Delete advance ' + id + '?')) return;
+  const res = await fetch('/advances/' + id, { method: 'DELETE' });
+  if (res.ok) location.reload();
+}
+
+async function suggestContinuation() {
+  const endDate = document.getElementById('adv-end').value;
+  if (!endDate) return;
+  const res = await fetch('/api/suggest-continuation?end_date=' + endDate);
+  if (!res.ok) return;
+  const data = await res.json();
+  document.getElementById('adv-cont').value = data.continuation_date;
+  document.getElementById('cont-hint-text').textContent =
+    'Suggested: 3 business days before maturity';
+  document.getElementById('cont-hint').style.display = 'flex';
+  updateCalcPreview();
+}
+
+function updateCalcPreview() {
+  const start = document.getElementById('adv-start').value;
+  const end = document.getElementById('adv-end').value;
+  const amount = parseFloat(document.getElementById('adv-amount').value) || 0;
+  const interest = parseFloat(document.getElementById('adv-interest').value) || 0;
+
+  if (start && end) {
+    const days = Math.round((new Date(end) - new Date(start)) / 86400000);
+    document.getElementById('calc-days').textContent = days;
+    if (days > 0 && amount > 0) {
+      const rate = (interest / amount) * (360 / days) * 100;
+      document.getElementById('calc-rate').textContent = rate.toFixed(4) + '%';
+    } else {
+      document.getElementById('calc-rate').textContent = '—';
+    }
+  }
+}
+
+// Listen for start date changes too
+document.getElementById('adv-start').addEventListener('change', updateCalcPreview);
+
+function filterAdvances(filter, pill) {
+  document.querySelectorAll('.filter-pills .pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  document.querySelectorAll('#advances-table tbody tr').forEach(row => {
+    if (filter === 'all') {
+      row.style.display = '';
+    } else if (filter === 'active') {
+      row.style.display = row.dataset.active === 'true' ? '' : 'none';
+    } else {
+      row.style.display = row.dataset.currency === filter ? '' : 'none';
+    }
+  });
+}
+</script>
+{% endblock %}

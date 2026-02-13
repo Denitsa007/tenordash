@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Fixed Advances{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      Fixed Advances
+      <small>Treasury Management</small>
+    </div>
+    <a href="/" class="nav-item {{ 'active' if active_page == 'dashboard' }}">
+      <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+      Dashboard
+      {% if alert_count is defined and alert_count > 0 %}
+        <span class="nav-badge">{{ alert_count }}</span>
+      {% endif %}
+    </a>
+    <a href="/advances" class="nav-item {{ 'active' if active_page == 'advances' }}">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 3h12v2H2zm0 4h12v2H2zm0 4h8v2H2z"/></svg>
+      Fixed Advances
+    </a>
+    <a href="/credit-lines" class="nav-item {{ 'active' if active_page == 'credit_lines' }}">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M3 2a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V3a1 1 0 00-1-1H3zm1 2h8v2H4V4z"/></svg>
+      Credit Lines
+    </a>
+    <a href="/banks" class="nav-item {{ 'active' if active_page == 'banks' }}">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L1 5v1h14V5L8 1zM3 7v5h2V7H3zm4 0v5h2V7H7zm4 0v5h2V7h-2zM1 13v2h14v-2H1z"/></svg>
+      Banks
+    </a>
+    <div class="nav-spacer"></div>
+    <div class="sidebar-monogram">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="ds" />
+    </div>
+  </nav>
+
+  <main class="main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
