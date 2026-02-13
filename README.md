@@ -23,7 +23,7 @@ A local Flask web app for tracking treasury fixed advance borrowings — replaci
 ## Getting Started
 
 ```bash
-pip install flask
+pip install -r requirements.txt
 python3 app.py
 ```
 
