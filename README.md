@@ -54,7 +54,7 @@ The database (`fixed_advances.db`) is created automatically on first run.
 
 ## Business Logic
 
-- **Interest rate**: `interest_amount / amount_original × 360 / days` (360-day year convention)
+- **Interest rate**: Back-calculated as `interest_amount / amount_original × 360 / days` (360-day year convention). The interest amount is the input (provided by the bank), and the rate is derived for verification — this lets the user cross-check the bank's quoted rate against the actual interest charged
 - **Active flag**: `start_date <= today < end_date`
 - **Continuation date**: 3 business days before end date (weekends only, no holiday calendar)
 - **IDs**: Auto-incremented with prefix — `FV0001` for advances, `CL001` for credit lines
