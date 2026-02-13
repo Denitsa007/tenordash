@@ -36,6 +36,18 @@ def parse_json(required_fields=None):
     return data, None
 
 
+def validate_advance_date_order(data):
+    try:
+        start = date.fromisoformat(data["start_date"])
+        end = date.fromisoformat(data["end_date"])
+    except (KeyError, TypeError, ValueError):
+        return jsonify({"ok": False, "error": "start_date and end_date must be valid ISO dates"}), 400
+
+    if end <= start:
+        return jsonify({"ok": False, "error": "end_date must be later than start_date"}), 400
+    return None
+
+
 @app.context_processor
 def inject_currencies():
     """Make currencies list available in every template."""
@@ -182,6 +194,9 @@ def create_advance():
     )
     if err:
         return err
+    date_err = validate_advance_date_order(data)
+    if date_err:
+        return date_err
 
     with db_conn() as conn:
         fv_id = db.create_advance(conn, data)
@@ -213,6 +228,9 @@ def update_advance(fv_id):
     )
     if err:
         return err
+    date_err = validate_advance_date_order(data)
+    if date_err:
+        return date_err
 
     with db_conn() as conn:
         db.update_advance(conn, fv_id, data)
