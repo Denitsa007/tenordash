@@ -191,6 +191,27 @@ class ApiContractTests(unittest.TestCase):
         res = self.client.post("/advances", json=payload)
         self.assertEqual(res.status_code, 400)
 
+    def test_advance_create_invalid_date_order_fails(self):
+        cl_id = self._create_credit_line()
+        payload = self._advance_payload(cl_id)
+        payload["start_date"] = "2026-02-10"
+        payload["end_date"] = "2026-02-10"
+
+        res = self.client.post("/advances", json=payload)
+        self.assertEqual(res.status_code, 400)
+
+    def test_advance_update_invalid_date_order_fails(self):
+        cl_id = self._create_credit_line()
+        payload = self._advance_payload(cl_id)
+        create_res = self.client.post("/advances", json=payload)
+        self.assertEqual(create_res.status_code, 200)
+        fv_id = create_res.get_json()["id"]
+
+        payload["start_date"] = "2026-03-01"
+        payload["end_date"] = "2026-02-28"
+        update_res = self.client.put(f"/advances/{fv_id}", json=payload)
+        self.assertEqual(update_res.status_code, 400)
+
 
 if __name__ == "__main__":
     unittest.main()
