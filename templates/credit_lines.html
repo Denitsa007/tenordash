@@ -36,7 +36,7 @@
         <td>{{ cl.bank_name or cl.bank_key }}</td>
         <td>{{ cl.description or '' }}</td>
         <td><span class="badge badge-{{ cl.currency|lower }}">{{ cl.currency }}</span></td>
-        <td class="mono text-right {{ 'text-green' if cl.currency == 'CHF' else 'text-blue' }}">{{ cl.amount|amount }}</td>
+        <td class="mono text-right text-{{ cl.currency|lower }}">{{ cl.amount|amount }}</td>
         <td>{{ cl.committed }}</td>
         <td>{{ cl.start_date|date_display }}</td>
         <td>{{ cl.end_date|date_display if cl.end_date else '—' }}</td>
@@ -88,11 +88,13 @@
           <select id="cl-currency" required>
             <option value="CHF">CHF</option>
             <option value="EUR">EUR</option>
+            <option value="GBP">GBP</option>
+            <option value="USD">USD</option>
           </select>
         </div>
         <div class="form-group">
           <label>Amount</label>
-          <input type="number" id="cl-amount" required min="1" placeholder="e.g. 510000000" />
+          <input type="text" id="cl-amount" required placeholder="e.g. 510,000,000" oninput="formatCLAmount(this)" inputmode="numeric" />
         </div>
       </div>
       <div class="form-group">
@@ -130,6 +132,28 @@
 
 {% block scripts %}
 <script>
+const _decSep = (1.1).toLocaleString().charAt(1);
+const _thouSep = (1000).toLocaleString().length > 4 ? (1000).toLocaleString().charAt(1) : '';
+const _stripGroupRe = _thouSep ? new RegExp('\\' + _thouSep, 'g') : null;
+
+function parseNum(str) {
+  let s = (str || '');
+  if (_stripGroupRe) s = s.replace(_stripGroupRe, '');
+  if (_decSep !== '.') s = s.replace(_decSep, '.');
+  return parseFloat(s) || 0;
+}
+
+function formatCLAmount(el) {
+  const pos = el.selectionStart;
+  const oldLen = el.value.length;
+  let raw = el.value.replace(/[^0-9]/g, '');
+  if (!raw) { el.value = ''; return; }
+  el.value = parseInt(raw, 10).toLocaleString();
+  const newLen = el.value.length;
+  const newPos = Math.max(0, pos + (newLen - oldLen));
+  el.setSelectionRange(newPos, newPos);
+}
+
 let editingCLId = null;
 
 function openCLForm() {
@@ -154,7 +178,7 @@ async function editCL(id) {
   document.getElementById('cl-bank').value = data.bank_key;
   document.getElementById('cl-description').value = data.description || '';
   document.getElementById('cl-currency').value = data.currency;
-  document.getElementById('cl-amount').value = data.amount;
+  document.getElementById('cl-amount').value = parseInt(data.amount).toLocaleString();
   document.getElementById('cl-committed').value = data.committed;
   document.getElementById('cl-start').value = data.start_date;
   document.getElementById('cl-end').value = data.end_date || '';
@@ -168,7 +192,7 @@ async function saveCL(e) {
     bank_key: document.getElementById('cl-bank').value,
     description: document.getElementById('cl-description').value,
     currency: document.getElementById('cl-currency').value,
-    amount: parseInt(document.getElementById('cl-amount').value),
+    amount: parseNum(document.getElementById('cl-amount').value),
     committed: document.getElementById('cl-committed').value,
     start_date: document.getElementById('cl-start').value,
     end_date: document.getElementById('cl-end').value || null,
@@ -183,6 +207,12 @@ async function saveCL(e) {
     body: JSON.stringify(data)
   });
   if (res.ok) location.reload();
+}
+
+// Auto-open form if ?new=1
+if (new URLSearchParams(window.location.search).get('new')) {
+  openCLForm();
+  history.replaceState(null, '', '/credit-lines');
 }
 
 async function deleteCL(id) {

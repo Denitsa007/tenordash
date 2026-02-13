@@ -31,7 +31,7 @@ def dashboard():
 
         utilization = [dict(r) for r in db.get_cl_utilization(conn)]
 
-        rate, rate_date = ecb.get_eur_chf_rate()
+        fx_rates, rate_date = ecb.get_fx_rates()
 
         return render_template(
             "dashboard.html",
@@ -39,7 +39,7 @@ def dashboard():
             alerts=alerts,
             active=active,
             utilization=utilization,
-            ecb_rate=rate,
+            fx_rates=fx_rates,
             ecb_date=rate_date,
             today=date.today().isoformat(),
         )
@@ -210,10 +210,34 @@ def suggest_continuation():
         return jsonify({"error": "Invalid date"}), 400
 
 
+@app.route("/api/check-cl-capacity")
+def check_cl_capacity():
+    cl_id = request.args.get("cl_id")
+    amount = float(request.args.get("amount", 0))
+    exclude = request.args.get("exclude")
+    if not cl_id:
+        return jsonify({"error": "cl_id required"}), 400
+    conn = db.get_db()
+    try:
+        info = db.get_cl_drawn(conn, cl_id, exclude_fv_id=exclude)
+        if not info:
+            return jsonify({"error": "Credit line not found"}), 404
+        new_drawn = info["drawn"] + amount
+        exceeded = new_drawn > info["facility"]
+        return jsonify({
+            "facility": info["facility"],
+            "current_drawn": info["drawn"],
+            "new_drawn": new_drawn,
+            "exceeded": exceeded,
+        })
+    finally:
+        conn.close()
+
+
 @app.route("/api/ecb-rate")
 def ecb_rate():
-    rate, rate_date = ecb.get_eur_chf_rate()
-    return jsonify({"rate": rate, "date": rate_date})
+    rates, rate_date = ecb.get_fx_rates()
+    return jsonify({"rates": rates, "date": rate_date})
 
 
 # ── Template Helpers ──

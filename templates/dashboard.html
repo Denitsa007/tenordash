@@ -8,7 +8,11 @@
 <div class="topbar">
   <h2>Dashboard</h2>
   <div class="topbar-actions">
-    <a href="/advances" class="btn-primary" onclick="return true;">
+    <a href="/credit-lines?new=1" class="btn-secondary">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>
+      New Credit Line
+    </a>
+    <a href="/advances?new=1" class="btn-primary">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>
       New Advance
     </a>
@@ -17,16 +21,15 @@
 
 <!-- Summary Cards -->
 <div class="cards">
+  {% for ccy in ['CHF', 'EUR', 'GBP', 'USD'] %}
+  {% if totals.get(ccy) %}
   <div class="card">
-    <div class="card-label">Active CHF</div>
-    <div class="card-value chf">{{ (totals.get('CHF', {}).get('total', 0))|amount_short }}</div>
-    <div class="card-sub">{{ totals.get('CHF', {}).get('count', 0) }} instrument{{ 's' if totals.get('CHF', {}).get('count', 0) != 1 }}</div>
+    <div class="card-label">Active {{ ccy }}</div>
+    <div class="card-value {{ ccy|lower }}">{{ totals[ccy].total|amount_short }}</div>
+    <div class="card-sub">{{ totals[ccy].count }} instrument{{ 's' if totals[ccy].count != 1 }}</div>
   </div>
-  <div class="card">
-    <div class="card-label">Active EUR</div>
-    <div class="card-value eur">{{ (totals.get('EUR', {}).get('total', 0))|amount_short }}</div>
-    <div class="card-sub">{{ totals.get('EUR', {}).get('count', 0) }} instrument{{ 's' if totals.get('EUR', {}).get('count', 0) != 1 }}</div>
-  </div>
+  {% endif %}
+  {% endfor %}
   <div class="card {{ 'alert-card' if alerts }}">
     <div class="card-label">Continuations Due</div>
     <div class="card-value">{{ alerts|length }}</div>
@@ -34,25 +37,45 @@
   </div>
   <div class="card">
     <div class="card-label">CL Utilization (CHF eq.)</div>
-    {% if utilization %}
+    {% if utilization and fx_rates %}
       {% set ns = namespace(drawn=0, facility=0) %}
       {% for u in utilization %}
-        {% if u.currency == 'EUR' and ecb_rate %}
-          {% set ns.drawn = ns.drawn + u.drawn_amount * ecb_rate %}
-          {% set ns.facility = ns.facility + u.facility_amount * ecb_rate %}
-        {% else %}
-          {% set ns.drawn = ns.drawn + u.drawn_amount %}
-          {% set ns.facility = ns.facility + u.facility_amount %}
-        {% endif %}
+        {% set rate = fx_rates.get(u.currency, 1.0) %}
+        {% set ns.drawn = ns.drawn + u.drawn_amount * rate %}
+        {% set ns.facility = ns.facility + u.facility_amount * rate %}
       {% endfor %}
       <div class="card-value">{{ ((ns.drawn / ns.facility * 100) if ns.facility > 0 else 0)|round|int }}%</div>
-      <div class="card-sub">{{ ns.drawn|int|amount_short }} / {{ ns.facility|int|amount_short }}</div>
+      <div class="card-sub">{{ ns.drawn|int|amount_short }} / {{ ns.facility|int|amount_short }} CHF</div>
     {% else %}
       <div class="card-value">—</div>
       <div class="card-sub">No credit lines</div>
     {% endif %}
   </div>
 </div>
+
+<!-- Credit Line Utilization -->
+{% if utilization %}
+<div class="section">
+  <div class="section-header">
+    <h3>Credit Line Utilization</h3>
+  </div>
+  <div style="padding: 16px 20px;">
+    {% for u in utilization %}
+    {% set pct = (u.drawn_amount / u.facility_amount * 100) if u.facility_amount > 0 else 0 %}
+    <div class="util-item">
+      <div class="util-header">
+        <strong>{{ u.id }} {{ u.description or '' }}</strong>
+        <span>{{ u.drawn_amount|amount_short }} / {{ u.facility_amount|amount_short }} {{ u.currency }}</span>
+      </div>
+      <div class="util-bar">
+        <div class="util-bar-fill {{ 'over' if pct > 100 else 'warn' if pct > 80 else u.currency|lower }}"
+             style="width: {{ [pct, 100]|min }}%"></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
 
 <!-- Continuation Alerts -->
 {% if alerts %}
@@ -80,6 +103,8 @@
       <span class="pill active" onclick="filterDash('all', this)">All</span>
       <span class="pill" onclick="filterDash('CHF', this)">CHF</span>
       <span class="pill" onclick="filterDash('EUR', this)">EUR</span>
+      <span class="pill" onclick="filterDash('GBP', this)">GBP</span>
+      <span class="pill" onclick="filterDash('USD', this)">USD</span>
     </div>
   </div>
   <table class="data-table" id="dash-table">
@@ -104,7 +129,7 @@
         <td>{{ adv.bank }}</td>
         <td class="text-muted">{{ adv.credit_line_id }}</td>
         <td><span class="badge badge-{{ adv.currency|lower }}">{{ adv.currency }}</span></td>
-        <td class="mono text-right {{ 'text-green' if adv.currency == 'CHF' else 'text-blue' }}">{{ adv.amount_original|amount }}</td>
+        <td class="mono text-right text-{{ adv.currency|lower }}">{{ adv.amount_original|amount }}</td>
         <td>{{ adv.start_date|date_display }}</td>
         <td>{{ adv.end_date|date_display }}</td>
         <td class="{{ 'text-alert' if is_alert }}">{{ adv.continuation_date|date_display }}</td>
@@ -123,33 +148,12 @@
   </table>
 </div>
 
-<!-- Credit Line Utilization -->
-{% if utilization %}
-<div class="section">
-  <div class="section-header">
-    <h3>Credit Line Utilization</h3>
-  </div>
-  <div style="padding: 16px 20px;">
-    {% for u in utilization %}
-    {% set pct = (u.drawn_amount / u.facility_amount * 100) if u.facility_amount > 0 else 0 %}
-    <div class="util-item">
-      <div class="util-header">
-        <strong>{{ u.id }} {{ u.description or '' }}</strong>
-        <span>{{ u.drawn_amount|amount_short }} / {{ u.facility_amount|amount_short }} {{ u.currency }}</span>
-      </div>
-      <div class="util-bar">
-        <div class="util-bar-fill {{ 'over' if pct > 100 else 'warn' if pct > 80 else ('blue' if u.currency == 'EUR' else 'green') }}"
-             style="width: {{ [pct, 100]|min }}%"></div>
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-</div>
-{% endif %}
-
-{% if ecb_rate %}
+{% if fx_rates %}
 <div class="ecb-footer">
-  EUR/CHF: {{ "%.4f"|format(ecb_rate) }} &middot; ECB {{ ecb_date or '' }}
+  {% for ccy in ['EUR', 'GBP', 'USD'] %}
+    {% if fx_rates.get(ccy) %}{{ ccy }}/CHF: {{ "%.4f"|format(fx_rates[ccy]) }}{% if not loop.last %} &middot; {% endif %}{% endif %}
+  {% endfor %}
+  &middot; ECB {{ ecb_date or '' }}
 </div>
 {% endif %}
 {% endblock %}

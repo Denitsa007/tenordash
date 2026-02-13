@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS credit_lines (
     id TEXT PRIMARY KEY,
     bank_key TEXT NOT NULL,
     description TEXT,
-    currency TEXT NOT NULL CHECK(currency IN ('CHF', 'EUR')),
+    currency TEXT NOT NULL CHECK(currency IN ('CHF', 'EUR', 'GBP', 'USD')),
     amount INTEGER NOT NULL CHECK(amount > 0),
     committed TEXT NOT NULL CHECK(committed IN ('Yes', 'No')),
     start_date TEXT NOT NULL,
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS fixed_advances (
     start_date TEXT NOT NULL,
     end_date TEXT NOT NULL,
     continuation_date TEXT NOT NULL,
-    currency TEXT NOT NULL CHECK(currency IN ('CHF', 'EUR')),
+    currency TEXT NOT NULL CHECK(currency IN ('CHF', 'EUR', 'GBP', 'USD')),
     amount_original INTEGER NOT NULL CHECK(amount_original > 0),
     interest_amount REAL NOT NULL CHECK(interest_amount >= 0),
     FOREIGN KEY (credit_line_id) REFERENCES credit_lines(id)
@@ -222,6 +222,29 @@ def get_continuation_alerts(conn, days=7):
         "ORDER BY fa.continuation_date ASC",
         (days,),
     ).fetchall()
+
+
+def get_cl_drawn(conn, cl_id, exclude_fv_id=None):
+    if exclude_fv_id:
+        row = conn.execute(
+            "SELECT cl.amount as facility, COALESCE(SUM(fa.amount_original), 0) as drawn "
+            "FROM credit_lines cl "
+            "LEFT JOIN fixed_advances fa ON fa.credit_line_id = cl.id "
+            "AND fa.start_date <= date('now') AND fa.end_date > date('now') "
+            "AND fa.id != ? "
+            "WHERE cl.id = ?",
+            (exclude_fv_id, cl_id),
+        ).fetchone()
+    else:
+        row = conn.execute(
+            "SELECT cl.amount as facility, COALESCE(SUM(fa.amount_original), 0) as drawn "
+            "FROM credit_lines cl "
+            "LEFT JOIN fixed_advances fa ON fa.credit_line_id = cl.id "
+            "AND fa.start_date <= date('now') AND fa.end_date > date('now') "
+            "WHERE cl.id = ?",
+            (cl_id,),
+        ).fetchone()
+    return dict(row) if row else None
 
 
 def get_cl_utilization(conn):
