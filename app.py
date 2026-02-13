@@ -119,7 +119,7 @@ def delete_bank(key):
 @app.route("/credit-lines")
 def credit_lines_page():
     with db_conn() as conn:
-        lines = db.get_credit_lines(conn)
+        lines = db.get_all_credit_lines(conn)
         banks = db.get_banks(conn)
         return render_template("credit_lines.html", lines=lines, banks=banks)
 
@@ -160,9 +160,16 @@ def update_credit_line(cl_id):
 
 
 @app.route("/credit-lines/<cl_id>", methods=["DELETE"])
-def delete_credit_line(cl_id):
+def archive_credit_line(cl_id):
     with db_conn() as conn:
-        db.delete_credit_line(conn, cl_id)
+        db.archive_credit_line(conn, cl_id)
+        return jsonify({"ok": True})
+
+
+@app.route("/credit-lines/<cl_id>/restore", methods=["PATCH"])
+def restore_credit_line(cl_id):
+    with db_conn() as conn:
+        db.restore_credit_line(conn, cl_id)
         return jsonify({"ok": True})
 
 
