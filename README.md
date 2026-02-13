@@ -68,7 +68,7 @@ Phase 1 (core CRUD + dashboard) is complete. Phase 2 (Excel/CSV import, `.xlsx` 
 
 ## Release Process
 
-- Use `/Users/denitsa/Library/Mobile Documents/iCloud~md~obsidian/Documents/Obsidian Vault/TenorDash/RELEASE_CHECKLIST.md` before and after merging changes to `main`.
+- Use [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) before and after merging changes to `main`.
 
 ---
 
