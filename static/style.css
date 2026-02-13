@@ -585,6 +585,76 @@ body {
   margin-bottom: 16px;
 }
 
+/* ── Modal Overlay (centered, for Add Currency) ── */
+
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(21,12,12,0.3);
+  display: none;
+  z-index: 200;
+  justify-content: center;
+  align-items: center;
+}
+.modal-overlay.show { display: flex; }
+
+.modal-box {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(21,12,12,0.18);
+  padding: 28px;
+  width: 360px;
+  max-width: 90vw;
+  animation: modalIn 0.2s ease;
+}
+@keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+.modal-box h3 {
+  font-family: 'Libre Baskerville', serif;
+  font-size: 18px;
+  font-weight: 400;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.currency-msg {
+  font-size: 12px;
+  padding: 10px 14px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+.currency-msg.warn { background: #fef3e2; color: #b45309; }
+.currency-msg.error { background: #fdf2f6; color: #A62152; }
+
+/* ── Select with "+" button ── */
+
+.select-with-add {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+.select-with-add select { flex: 1; }
+
+.btn-add-currency {
+  width: 36px;
+  border: 1px solid var(--border-medium);
+  border-radius: 4px;
+  background: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.btn-add-currency:hover { border-color: var(--berry); color: var(--berry); }
+
 /* ── ECB rate footer ── */
 
 .ecb-footer {

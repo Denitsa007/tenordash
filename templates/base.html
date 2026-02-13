@@ -5,6 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Fixed Advances{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+  <!-- Dynamic currency colors from DB -->
+  <style>
+    :root {
+      {% for curr in currencies %}
+      --{{ curr.code|lower }}: {{ curr.css_color }};
+      {% endfor %}
+    }
+    {% for curr in currencies %}
+    .badge-{{ curr.code|lower }} { background: {{ curr.css_color }}18; color: {{ curr.css_color }}; }
+    .text-{{ curr.code|lower }} { color: {{ curr.css_color }}; }
+    .card-value.{{ curr.code|lower }} { color: {{ curr.css_color }}; }
+    .util-bar-fill.{{ curr.code|lower }} { background: {{ curr.css_color }}; }
+    {% endfor %}
+  </style>
 </head>
 <body>
   <nav class="sidebar">
@@ -42,7 +57,94 @@
     {% block content %}{% endblock %}
   </main>
 
+  <!-- Add Currency Modal (shared across all pages) -->
+  <div class="modal-overlay" id="currency-modal">
+    <div class="modal-box">
+      <h3>
+        Add Currency
+        <button class="panel-close" onclick="closeCurrencyModal()">&times;</button>
+      </h3>
+      <form id="currency-form" onsubmit="saveCurrency(event)">
+        <div class="form-group">
+          <label>Currency Code (3 letters)</label>
+          <input type="text" id="currency-code" maxlength="3" pattern="[A-Za-z]{3}" required
+                 placeholder="e.g. JPY" style="text-transform: uppercase;" autocomplete="off" />
+        </div>
+        <div class="currency-msg" id="currency-msg" style="display:none"></div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" onclick="closeCurrencyModal()">Cancel</button>
+          <button type="submit" class="btn-primary" id="currency-submit-btn">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 7 5.5 10.5 12 4"/></svg>
+            Add
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="{{ url_for('static', filename='app.js') }}"></script>
+  <script>
+  function openCurrencyModal() {
+    document.getElementById('currency-form').reset();
+    document.getElementById('currency-msg').style.display = 'none';
+    document.getElementById('currency-submit-btn').disabled = false;
+    document.getElementById('currency-modal').classList.add('show');
+    document.getElementById('currency-code').focus();
+  }
+
+  function closeCurrencyModal() {
+    document.getElementById('currency-modal').classList.remove('show');
+  }
+
+  async function saveCurrency(e) {
+    e.preventDefault();
+    const code = document.getElementById('currency-code').value.trim().toUpperCase();
+    const msgEl = document.getElementById('currency-msg');
+    const btn = document.getElementById('currency-submit-btn');
+    btn.disabled = true;
+    msgEl.style.display = 'none';
+
+    const res = await fetch('/api/currencies', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({code})
+    });
+    const data = await res.json();
+    if (data.ok) {
+      // Add new option to all currency dropdowns on the page (keeps form state)
+      document.querySelectorAll('select[id$="-currency"]').forEach(sel => {
+        if (!sel.querySelector('option[value="' + data.code + '"]')) {
+          const opt = document.createElement('option');
+          opt.value = data.code;
+          opt.textContent = data.code;
+          sel.appendChild(opt);
+          sel.value = data.code;  // auto-select the newly added currency
+        }
+      });
+      if (data.ecb_warning) {
+        msgEl.textContent = data.ecb_warning + ' — currency added without ECB rates.';
+        msgEl.className = 'currency-msg warn';
+        msgEl.style.display = 'block';
+        setTimeout(() => closeCurrencyModal(), 1200);
+      } else {
+        closeCurrencyModal();
+      }
+    } else {
+      msgEl.textContent = data.error || 'Failed to add currency';
+      msgEl.className = 'currency-msg error';
+      msgEl.style.display = 'block';
+      btn.disabled = false;
+    }
+  }
+
+  // Close modal on overlay click or Escape
+  document.getElementById('currency-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeCurrencyModal();
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeCurrencyModal();
+  });
+  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

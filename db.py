@@ -1,5 +1,5 @@
 import sqlite3
-from config import DB_PATH
+from config import DB_PATH, BASE_CURRENCY
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS banks (
@@ -7,11 +7,18 @@ CREATE TABLE IF NOT EXISTS banks (
     bank_name TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS currencies (
+    code TEXT PRIMARY KEY,
+    css_color TEXT NOT NULL,
+    display_order INTEGER NOT NULL,
+    ecb_available INTEGER NOT NULL DEFAULT 1
+);
+
 CREATE TABLE IF NOT EXISTS credit_lines (
     id TEXT PRIMARY KEY,
     bank_key TEXT NOT NULL,
     description TEXT,
-    currency TEXT NOT NULL CHECK(currency IN ('CHF', 'EUR', 'GBP', 'USD')),
+    currency TEXT NOT NULL,
     amount INTEGER NOT NULL CHECK(amount > 0),
     committed TEXT NOT NULL CHECK(committed IN ('Yes', 'No')),
     start_date TEXT NOT NULL,
@@ -27,12 +34,35 @@ CREATE TABLE IF NOT EXISTS fixed_advances (
     start_date TEXT NOT NULL,
     end_date TEXT NOT NULL,
     continuation_date TEXT NOT NULL,
-    currency TEXT NOT NULL CHECK(currency IN ('CHF', 'EUR', 'GBP', 'USD')),
+    currency TEXT NOT NULL,
     amount_original INTEGER NOT NULL CHECK(amount_original > 0),
     interest_amount REAL NOT NULL CHECK(interest_amount >= 0),
     FOREIGN KEY (credit_line_id) REFERENCES credit_lines(id)
 );
 """
+
+# 12-color palette for auto-assigning to new currencies
+COLOR_PALETTE = [
+    "#0d7c5f",  # green  (CHF default)
+    "#2563eb",  # blue   (EUR default)
+    "#7c3aed",  # purple (GBP default)
+    "#b45309",  # amber  (USD default)
+    "#dc2626",  # red
+    "#0891b2",  # cyan
+    "#c026d3",  # fuchsia
+    "#059669",  # emerald
+    "#d97706",  # orange
+    "#4f46e5",  # indigo
+    "#be185d",  # pink
+    "#65a30d",  # lime
+]
+
+DEFAULT_CURRENCIES = [
+    ("CHF", "#0d7c5f", 1, 0),  # base currency — not fetched from ECB
+    ("EUR", "#2563eb", 2, 1),
+    ("GBP", "#7c3aed", 3, 1),
+    ("USD", "#b45309", 4, 1),
+]
 
 
 def get_db():
@@ -45,8 +75,115 @@ def get_db():
 def init_db():
     conn = get_db()
     conn.executescript(SCHEMA)
+    _seed_currencies(conn)
+    _migrate_remove_currency_check(conn)
     conn.commit()
     conn.close()
+
+
+def _seed_currencies(conn):
+    """Insert default currencies if table is empty."""
+    count = conn.execute("SELECT COUNT(*) FROM currencies").fetchone()[0]
+    if count == 0:
+        conn.executemany(
+            "INSERT INTO currencies (code, css_color, display_order, ecb_available) VALUES (?, ?, ?, ?)",
+            DEFAULT_CURRENCIES,
+        )
+
+
+def _migrate_remove_currency_check(conn):
+    """Recreate credit_lines and fixed_advances without CHECK(currency IN (...)).
+    Safe to run multiple times — detects if migration already done by checking table SQL.
+    """
+    row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='credit_lines'"
+    ).fetchone()
+    if row is None:
+        return  # table doesn't exist yet (fresh DB)
+    if "CHECK(currency IN" not in (row[0] or ""):
+        return  # already migrated
+
+    conn.executescript("""
+        PRAGMA foreign_keys = OFF;
+
+        ALTER TABLE credit_lines RENAME TO _credit_lines_old;
+        CREATE TABLE credit_lines (
+            id TEXT PRIMARY KEY,
+            bank_key TEXT NOT NULL,
+            description TEXT,
+            currency TEXT NOT NULL,
+            amount INTEGER NOT NULL CHECK(amount > 0),
+            committed TEXT NOT NULL CHECK(committed IN ('Yes', 'No')),
+            start_date TEXT NOT NULL,
+            end_date TEXT,
+            note TEXT,
+            FOREIGN KEY (bank_key) REFERENCES banks(bank_key)
+        );
+        INSERT INTO credit_lines SELECT * FROM _credit_lines_old;
+        DROP TABLE _credit_lines_old;
+
+        ALTER TABLE fixed_advances RENAME TO _fixed_advances_old;
+        CREATE TABLE fixed_advances (
+            id TEXT PRIMARY KEY,
+            bank TEXT NOT NULL,
+            credit_line_id TEXT NOT NULL,
+            start_date TEXT NOT NULL,
+            end_date TEXT NOT NULL,
+            continuation_date TEXT NOT NULL,
+            currency TEXT NOT NULL,
+            amount_original INTEGER NOT NULL CHECK(amount_original > 0),
+            interest_amount REAL NOT NULL CHECK(interest_amount >= 0),
+            FOREIGN KEY (credit_line_id) REFERENCES credit_lines(id)
+        );
+        INSERT INTO fixed_advances SELECT * FROM _fixed_advances_old;
+        DROP TABLE _fixed_advances_old;
+
+        PRAGMA foreign_keys = ON;
+    """)
+
+
+# ── Currencies ──
+
+def get_currencies(conn):
+    return conn.execute(
+        "SELECT * FROM currencies ORDER BY display_order"
+    ).fetchall()
+
+
+def add_currency(conn, code, ecb_available=True):
+    color = assign_currency_color(conn)
+    order = conn.execute("SELECT COALESCE(MAX(display_order), 0) + 1 FROM currencies").fetchone()[0]
+    conn.execute(
+        "INSERT INTO currencies (code, css_color, display_order, ecb_available) VALUES (?, ?, ?, ?)",
+        (code.upper(), color, order, 1 if ecb_available else 0),
+    )
+    conn.commit()
+
+
+def delete_currency(conn, code):
+    conn.execute("DELETE FROM currencies WHERE code = ?", (code,))
+    conn.commit()
+
+
+def currency_in_use(conn, code):
+    """Check if a currency is used by any advance or credit line."""
+    row = conn.execute(
+        "SELECT COUNT(*) FROM fixed_advances WHERE currency = ? "
+        "UNION ALL "
+        "SELECT COUNT(*) FROM credit_lines WHERE currency = ?",
+        (code, code),
+    ).fetchall()
+    return any(r[0] > 0 for r in row)
+
+
+def assign_currency_color(conn):
+    """Pick the next unused color from the palette."""
+    used = {r["css_color"] for r in conn.execute("SELECT css_color FROM currencies").fetchall()}
+    for color in COLOR_PALETTE:
+        if color not in used:
+            return color
+    # All 12 used — cycle back to first
+    return COLOR_PALETTE[0]
 
 
 # ── Banks ──

@@ -21,12 +21,12 @@
 
 <!-- Summary Cards -->
 <div class="cards">
-  {% for ccy in ['CHF', 'EUR', 'GBP', 'USD'] %}
-  {% if totals.get(ccy) %}
+  {% for curr in currencies %}
+  {% if totals.get(curr.code) %}
   <div class="card">
-    <div class="card-label">Active {{ ccy }}</div>
-    <div class="card-value {{ ccy|lower }}">{{ totals[ccy].total|amount_short }}</div>
-    <div class="card-sub">{{ totals[ccy].count }} instrument{{ 's' if totals[ccy].count != 1 }}</div>
+    <div class="card-label">Active {{ curr.code }}</div>
+    <div class="card-value {{ curr.code|lower }}">{{ totals[curr.code].total|amount_short }}</div>
+    <div class="card-sub">{{ totals[curr.code].count }} instrument{{ 's' if totals[curr.code].count != 1 }}</div>
   </div>
   {% endif %}
   {% endfor %}
@@ -36,7 +36,7 @@
     <div class="card-sub">within next 7 days</div>
   </div>
   <div class="card">
-    <div class="card-label">CL Utilization (CHF eq.)</div>
+    <div class="card-label">CL Utilization ({{ BASE_CURRENCY }} eq.)</div>
     {% if utilization and fx_rates %}
       {% set ns = namespace(drawn=0, facility=0) %}
       {% for u in utilization %}
@@ -45,7 +45,7 @@
         {% set ns.facility = ns.facility + u.facility_amount * rate %}
       {% endfor %}
       <div class="card-value">{{ ((ns.drawn / ns.facility * 100) if ns.facility > 0 else 0)|round|int }}%</div>
-      <div class="card-sub">{{ ns.drawn|int|amount_short }} / {{ ns.facility|int|amount_short }} CHF</div>
+      <div class="card-sub">{{ ns.drawn|int|amount_short }} / {{ ns.facility|int|amount_short }} {{ BASE_CURRENCY }}</div>
     {% else %}
       <div class="card-value">—</div>
       <div class="card-sub">No credit lines</div>
@@ -101,10 +101,9 @@
     <h3>Active Instruments ({{ active|length }})</h3>
     <div class="filter-pills">
       <span class="pill active" onclick="filterDash('all', this)">All</span>
-      <span class="pill" onclick="filterDash('CHF', this)">CHF</span>
-      <span class="pill" onclick="filterDash('EUR', this)">EUR</span>
-      <span class="pill" onclick="filterDash('GBP', this)">GBP</span>
-      <span class="pill" onclick="filterDash('USD', this)">USD</span>
+      {% for curr in currencies %}
+      <span class="pill" onclick="filterDash('{{ curr.code }}', this)">{{ curr.code }}</span>
+      {% endfor %}
     </div>
   </div>
   <table class="data-table" id="dash-table">
@@ -150,10 +149,12 @@
 
 {% if fx_rates %}
 <div class="ecb-footer">
-  {% for ccy in ['EUR', 'GBP', 'USD'] %}
-    {% if fx_rates.get(ccy) %}{{ ccy }}/CHF: {{ "%.4f"|format(fx_rates[ccy]) }}{% if not loop.last %} &middot; {% endif %}{% endif %}
+  {% for curr in currencies %}
+    {% if curr.code != BASE_CURRENCY and fx_rates.get(curr.code) %}
+      {{ curr.code }}/{{ BASE_CURRENCY }}: {{ "%.4f"|format(fx_rates[curr.code]) }} &middot;
+    {% endif %}
   {% endfor %}
-  &middot; ECB {{ ecb_date or '' }}
+  ECB {{ ecb_date or '' }}
 </div>
 {% endif %}
 {% endblock %}

@@ -20,10 +20,9 @@
     <div class="filter-pills">
       <span class="pill active" data-filter="all" onclick="filterAdvances('all', this)">All</span>
       <span class="pill" data-filter="active" onclick="filterAdvances('active', this)">Active</span>
-      <span class="pill" data-filter="CHF" onclick="filterAdvances('CHF', this)">CHF</span>
-      <span class="pill" data-filter="EUR" onclick="filterAdvances('EUR', this)">EUR</span>
-      <span class="pill" data-filter="GBP" onclick="filterAdvances('GBP', this)">GBP</span>
-      <span class="pill" data-filter="USD" onclick="filterAdvances('USD', this)">USD</span>
+      {% for curr in currencies %}
+      <span class="pill" data-filter="{{ curr.code }}" onclick="filterAdvances('{{ curr.code }}', this)">{{ curr.code }}</span>
+      {% endfor %}
     </div>
   </div>
   <table class="data-table" id="advances-table">
@@ -110,12 +109,14 @@
 
       <div class="form-group">
         <label>Currency</label>
-        <select id="adv-currency" required>
-          <option value="CHF">CHF</option>
-          <option value="EUR">EUR</option>
-          <option value="GBP">GBP</option>
-          <option value="USD">USD</option>
-        </select>
+        <div class="select-with-add">
+          <select id="adv-currency" required>
+            {% for curr in currencies %}
+            <option value="{{ curr.code }}">{{ curr.code }}</option>
+            {% endfor %}
+          </select>
+          <button type="button" class="btn-add-currency" onclick="openCurrencyModal()" title="Add currency">+</button>
+        </div>
       </div>
 
       <div class="form-row">

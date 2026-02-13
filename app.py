@@ -1,12 +1,24 @@
+import re
 from flask import Flask, render_template, request, jsonify
 from datetime import date
 
 import db
 import helpers
 import ecb
-from config import CONTINUATION_ALERT_DAYS
+from config import CONTINUATION_ALERT_DAYS, BASE_CURRENCY
 
 app = Flask(__name__)
+
+
+@app.context_processor
+def inject_currencies():
+    """Make currencies list available in every template."""
+    conn = db.get_db()
+    try:
+        currencies = [dict(r) for r in db.get_currencies(conn)]
+        return {"currencies": currencies, "BASE_CURRENCY": BASE_CURRENCY}
+    finally:
+        conn.close()
 
 
 @app.before_request
@@ -31,7 +43,8 @@ def dashboard():
 
         utilization = [dict(r) for r in db.get_cl_utilization(conn)]
 
-        fx_rates, rate_date = ecb.get_fx_rates()
+        currencies = [dict(r) for r in db.get_currencies(conn)]
+        fx_rates, rate_date = ecb.get_fx_rates(currencies)
 
         return render_template(
             "dashboard.html",
@@ -236,8 +249,75 @@ def check_cl_capacity():
 
 @app.route("/api/ecb-rate")
 def ecb_rate():
-    rates, rate_date = ecb.get_fx_rates()
-    return jsonify({"rates": rates, "date": rate_date})
+    conn = db.get_db()
+    try:
+        currencies = [dict(r) for r in db.get_currencies(conn)]
+        rates, rate_date = ecb.get_fx_rates(currencies)
+        return jsonify({"rates": rates, "date": rate_date})
+    finally:
+        conn.close()
+
+
+# ── Currency Management API ──
+
+@app.route("/api/currencies")
+def list_currencies():
+    conn = db.get_db()
+    try:
+        rows = db.get_currencies(conn)
+        return jsonify([dict(r) for r in rows])
+    finally:
+        conn.close()
+
+
+@app.route("/api/currencies", methods=["POST"])
+def add_currency():
+    data = request.get_json()
+    code = (data.get("code") or "").strip().upper()
+    if not re.match(r"^[A-Z]{3}$", code):
+        return jsonify({"ok": False, "error": "Currency code must be exactly 3 letters"}), 400
+
+    conn = db.get_db()
+    try:
+        # Check if already exists
+        existing = conn.execute("SELECT code FROM currencies WHERE code = ?", (code,)).fetchone()
+        if existing:
+            return jsonify({"ok": False, "error": f"{code} already exists"}), 409
+
+        # Validate against ECB
+        ecb_ok, ecb_msg = ecb.validate_currency_ecb(code)
+
+        db.add_currency(conn, code, ecb_available=ecb_ok)
+
+        # Clear ECB cache so new currency is included in next fetch
+        ecb.clear_cache()
+
+        return jsonify({
+            "ok": True,
+            "code": code,
+            "ecb_available": ecb_ok,
+            "ecb_warning": ecb_msg,
+        })
+    finally:
+        conn.close()
+
+
+@app.route("/api/currencies/<code>", methods=["DELETE"])
+def remove_currency(code):
+    code = code.upper()
+    if code == BASE_CURRENCY:
+        return jsonify({"ok": False, "error": f"Cannot delete base currency ({BASE_CURRENCY})"}), 400
+
+    conn = db.get_db()
+    try:
+        if db.currency_in_use(conn, code):
+            return jsonify({"ok": False, "error": f"{code} is in use by advances or credit lines"}), 409
+
+        db.delete_currency(conn, code)
+        ecb.clear_cache()
+        return jsonify({"ok": True})
+    finally:
+        conn.close()
 
 
 # ── Template Helpers ──
