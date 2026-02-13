@@ -180,33 +180,10 @@
 
 {% block scripts %}
 <script>
-// Detect locale separators: e.g. "1,234.5" vs "1.234,5"
-const _decSep = (1.1).toLocaleString().charAt(1);
-const _thouSep = (1000).toLocaleString().length > 4 ? (1000).toLocaleString().charAt(1) : '';
-const _stripGroupRe = _thouSep ? new RegExp('\\' + _thouSep, 'g') : null;
-
-function parseNum(str) {
-  let s = (str || '');
-  if (_stripGroupRe) s = s.replace(_stripGroupRe, '');
-  if (_decSep !== '.') s = s.replace(_decSep, '.');
-  return parseFloat(s) || 0;
-}
+const parseNum = window.TDNumber.parseLocaleNumber;
 
 function formatAmountField(el, allowDecimals) {
-  const pos = el.selectionStart;
-  const oldLen = el.value.length;
-  // Strip everything except digits and locale decimal separator
-  let raw = el.value.replace(new RegExp('[^0-9' + (_decSep === '.' ? '\\.' : '\\' + _decSep) + ']', 'g'), '');
-  // Normalise to dot for splitting
-  if (_decSep !== '.') raw = raw.replace(_decSep, '.');
-  if (!allowDecimals) raw = raw.replace(/\./g, '');
-  if (!raw) { el.value = ''; return; }
-  const parts = raw.split('.');
-  parts[0] = parseInt(parts[0], 10).toLocaleString();
-  el.value = allowDecimals && parts.length > 1 ? parts[0] + _decSep + parts[1].slice(0, 2) : parts[0];
-  const newLen = el.value.length;
-  const newPos = Math.max(0, pos + (newLen - oldLen));
-  el.setSelectionRange(newPos, newPos);
+  window.TDNumber.formatAmountInput(el, allowDecimals);
 }
 
 function setAmountField(id, value, allowDecimals) {
