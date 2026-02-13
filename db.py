@@ -62,6 +62,8 @@ DEFAULT_CURRENCIES = [
     ("EUR", "#2563eb", 2, 1),
     ("GBP", "#7c3aed", 3, 1),
     ("USD", "#b45309", 4, 1),
+    ("CZK", "#dc2626", 5, 1),
+    ("PLN", "#0891b2", 6, 1),
 ]
 
 
@@ -76,9 +78,21 @@ def init_db():
     conn = get_db()
     conn.executescript(SCHEMA)
     _seed_currencies(conn)
+    _migrate_add_czk_pln(conn)
     _migrate_remove_currency_check(conn)
     conn.commit()
     conn.close()
+
+
+def _migrate_add_czk_pln(conn):
+    """Add CZK and PLN if not already present."""
+    existing = {r[0] for r in conn.execute("SELECT code FROM currencies").fetchall()}
+    new_currencies = [c for c in DEFAULT_CURRENCIES if c[0] in ("CZK", "PLN") and c[0] not in existing]
+    if new_currencies:
+        conn.executemany(
+            "INSERT INTO currencies (code, css_color, display_order, ecb_available) VALUES (?, ?, ?, ?)",
+            new_currencies,
+        )
 
 
 def _seed_currencies(conn):

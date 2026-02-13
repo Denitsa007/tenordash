@@ -8,7 +8,7 @@ A local Flask web app for tracking treasury fixed advance borrowings — replaci
 - **Fixed Advances CRUD** — Create, edit, delete borrowing drawdowns with auto-generated IDs (`FV0001`, `FV0002`, ...), live calculation preview (days, back-calculated interest rate), and credit line capacity warnings
 - **Credit Lines** — Manage borrowing facilities with bank linkage, currency, committed status
 - **Banks** — Simple reference table for bank dropdowns
-- **Dynamic Currency Management** — Add new currencies inline from any form via a "+" button; ECB validation, auto-assigned badge colors from a 12-color palette. Ships with CHF, EUR, GBP, USD; new currencies (e.g. JPY, SEK) can be added at any time
+- **Dynamic Currency Management** — Add new currencies inline from any form via a "+" button; ECB validation, auto-assigned badge colors from a 12-color palette. Ships with CHF, CZK, EUR, GBP, PLN, USD; new currencies (e.g. JPY, SEK) can be added at any time
 - **Continuation Date Auto-Suggest** — 3 business days before maturity, editable
 - **ECB FX Rates** — Dynamically fetches cross rates from ECB Data API for all active currencies; cached daily with automatic cache reset when currencies change
 - **Locale-Aware Formatting** — Amount fields use the browser's locale for thousands/decimal separators
