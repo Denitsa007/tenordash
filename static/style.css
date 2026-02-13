@@ -143,6 +143,16 @@ body {
   filter: brightness(0) invert(1);
 }
 .sidebar-monogram img:hover { opacity: 0.8; }
+.sidebar-link {
+  display: block;
+  margin-top: 6px;
+  font-size: 10px;
+  color: #8a7070;
+  text-decoration: none;
+  letter-spacing: 0.03em;
+  transition: color 0.15s;
+}
+.sidebar-link:hover { color: #fff; }
 
 /* ── Buttons ── */
 
