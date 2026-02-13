@@ -134,26 +134,10 @@
 
 {% block scripts %}
 <script>
-const _decSep = (1.1).toLocaleString().charAt(1);
-const _thouSep = (1000).toLocaleString().length > 4 ? (1000).toLocaleString().charAt(1) : '';
-const _stripGroupRe = _thouSep ? new RegExp('\\' + _thouSep, 'g') : null;
-
-function parseNum(str) {
-  let s = (str || '');
-  if (_stripGroupRe) s = s.replace(_stripGroupRe, '');
-  if (_decSep !== '.') s = s.replace(_decSep, '.');
-  return parseFloat(s) || 0;
-}
+const parseNum = window.TDNumber.parseLocaleNumber;
 
 function formatCLAmount(el) {
-  const pos = el.selectionStart;
-  const oldLen = el.value.length;
-  let raw = el.value.replace(/[^0-9]/g, '');
-  if (!raw) { el.value = ''; return; }
-  el.value = parseInt(raw, 10).toLocaleString();
-  const newLen = el.value.length;
-  const newPos = Math.max(0, pos + (newLen - oldLen));
-  el.setSelectionRange(newPos, newPos);
+  window.TDNumber.formatIntegerInput(el);
 }
 
 let editingCLId = null;

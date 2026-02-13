@@ -88,6 +88,9 @@ class ApiContractTests(unittest.TestCase):
         res = self.client.get("/api/check-cl-capacity?cl_id=CL999&amount=1000")
         self.assertEqual(res.status_code, 404)
 
+        res = self.client.get("/api/check-cl-capacity?cl_id=CL001&amount=not-a-number")
+        self.assertEqual(res.status_code, 400)
+
     def test_currency_api_invalid_and_duplicate(self):
         res = self.client.post("/api/currencies", json={"code": "US"})
         self.assertEqual(res.status_code, 400)
@@ -170,7 +173,7 @@ class ApiContractTests(unittest.TestCase):
         payload.pop("bank_key")
 
         res = self.client.post("/credit-lines", json=payload)
-        self.assertIn(res.status_code, {400, 422, 500})
+        self.assertEqual(res.status_code, 400)
 
     def test_advance_create_missing_required_field_fails(self):
         cl_id = self._create_credit_line()
@@ -178,7 +181,7 @@ class ApiContractTests(unittest.TestCase):
         payload.pop("amount_original")
 
         res = self.client.post("/advances", json=payload)
-        self.assertIn(res.status_code, {400, 422, 500})
+        self.assertEqual(res.status_code, 400)
 
 
 if __name__ == "__main__":
