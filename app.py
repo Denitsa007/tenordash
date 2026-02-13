@@ -40,7 +40,7 @@ def validate_advance_date_order(data):
     try:
         start = date.fromisoformat(data["start_date"])
         end = date.fromisoformat(data["end_date"])
-    except (TypeError, ValueError):
+    except (KeyError, TypeError, ValueError):
         return jsonify({"ok": False, "error": "start_date and end_date must be valid ISO dates"}), 400
 
     if end <= start:
