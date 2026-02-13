@@ -113,6 +113,8 @@ def create_credit_line():
     try:
         cl_id = db.create_credit_line(conn, data)
         return jsonify({"ok": True, "id": cl_id})
+    except db.WriteBusyError:
+        return jsonify({"ok": False, "error": "Database is busy. Please retry."}), 503
     finally:
         conn.close()
 
@@ -172,6 +174,8 @@ def create_advance():
     try:
         fv_id = db.create_advance(conn, data)
         return jsonify({"ok": True, "id": fv_id})
+    except db.WriteBusyError:
+        return jsonify({"ok": False, "error": "Database is busy. Please retry."}), 503
     finally:
         conn.close()
 

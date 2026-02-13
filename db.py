@@ -1,4 +1,5 @@
 import sqlite3
+import time
 from config import DB_PATH, BASE_CURRENCY
 
 SCHEMA = """
@@ -12,6 +13,11 @@ CREATE TABLE IF NOT EXISTS currencies (
     css_color TEXT NOT NULL,
     display_order INTEGER NOT NULL,
     ecb_available INTEGER NOT NULL DEFAULT 1
+);
+
+CREATE TABLE IF NOT EXISTS id_sequences (
+    name TEXT PRIMARY KEY,
+    last_value INTEGER NOT NULL CHECK(last_value >= 0)
 );
 
 CREATE TABLE IF NOT EXISTS credit_lines (
@@ -66,11 +72,25 @@ DEFAULT_CURRENCIES = [
     ("PLN", "#0891b2", 6, 1),
 ]
 
+SEQUENCE_CONFIG = {
+    "credit_lines": {"table": "credit_lines", "prefix": "CL", "padding": 3},
+    "fixed_advances": {"table": "fixed_advances", "prefix": "FV", "padding": 4},
+}
+
+WRITE_RETRY_LIMIT = 3
+
+
+class WriteBusyError(RuntimeError):
+    """Raised when a write transaction cannot acquire a lock after retries."""
+
+    pass
+
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA busy_timeout = 3000")
     return conn
 
 
@@ -80,6 +100,7 @@ def init_db():
     _seed_currencies(conn)
     _migrate_add_czk_pln(conn)
     _migrate_remove_currency_check(conn)
+    _migrate_init_sequences(conn)
     conn.commit()
     conn.close()
 
@@ -156,6 +177,90 @@ def _migrate_remove_currency_check(conn):
     """)
 
 
+def _max_existing_id_number(conn, table_name, prefix):
+    rows = conn.execute(f"SELECT id FROM {table_name}").fetchall()
+    max_num = 0
+    for row in rows:
+        value = row["id"]
+        if not value or not value.startswith(prefix):
+            continue
+        suffix = value[len(prefix):]
+        if suffix.isdigit():
+            max_num = max(max_num, int(suffix))
+    return max_num
+
+
+def _migrate_init_sequences(conn):
+    """Create sequence table and backfill values for existing IDs."""
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS id_sequences ("
+        "name TEXT PRIMARY KEY, "
+        "last_value INTEGER NOT NULL CHECK(last_value >= 0))"
+    )
+    for name, cfg in SEQUENCE_CONFIG.items():
+        current_max = _max_existing_id_number(conn, cfg["table"], cfg["prefix"])
+        conn.execute(
+            "INSERT OR IGNORE INTO id_sequences (name, last_value) VALUES (?, ?)",
+            (name, current_max),
+        )
+
+
+def _ensure_sequence_row(conn, sequence_name):
+    cfg = SEQUENCE_CONFIG.get(sequence_name)
+    if not cfg:
+        raise ValueError(f"Unknown sequence '{sequence_name}'")
+    exists = conn.execute(
+        "SELECT 1 FROM id_sequences WHERE name = ?",
+        (sequence_name,),
+    ).fetchone()
+    if exists:
+        return
+    current_max = _max_existing_id_number(conn, cfg["table"], cfg["prefix"])
+    conn.execute(
+        "INSERT OR IGNORE INTO id_sequences (name, last_value) VALUES (?, ?)",
+        (sequence_name, current_max),
+    )
+
+
+def _next_sequence_value(conn, sequence_name):
+    _ensure_sequence_row(conn, sequence_name)
+    updated = conn.execute(
+        "UPDATE id_sequences SET last_value = last_value + 1 WHERE name = ?",
+        (sequence_name,),
+    )
+    if updated.rowcount != 1:
+        raise ValueError(f"Sequence '{sequence_name}' is not initialized")
+    row = conn.execute(
+        "SELECT last_value FROM id_sequences WHERE name = ?",
+        (sequence_name,),
+    ).fetchone()
+    return row["last_value"]
+
+
+def _run_in_write_tx(conn, operation):
+    for attempt in range(WRITE_RETRY_LIMIT + 1):
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            result = operation()
+            conn.commit()
+            return result
+        except sqlite3.OperationalError as exc:
+            if conn.in_transaction:
+                conn.rollback()
+            msg = str(exc).lower()
+            locked = "database is locked" in msg or "database is busy" in msg
+            if locked and attempt < WRITE_RETRY_LIMIT:
+                time.sleep(0.05 * (attempt + 1))
+                continue
+            if locked:
+                raise WriteBusyError("Database is busy, please retry") from exc
+            raise
+        except Exception:
+            if conn.in_transaction:
+                conn.rollback()
+            raise
+
+
 # ── Currencies ──
 
 def get_currencies(conn):
@@ -228,12 +333,13 @@ def delete_bank(conn, bank_key):
 
 def next_cl_id(conn):
     row = conn.execute(
-        "SELECT id FROM credit_lines ORDER BY id DESC LIMIT 1"
+        "SELECT last_value FROM id_sequences WHERE name = 'credit_lines'"
     ).fetchone()
-    if not row:
-        return "CL001"
-    num = int(row["id"][2:]) + 1
-    return f"CL{num:03d}"
+    if row:
+        next_value = row["last_value"] + 1
+    else:
+        next_value = _max_existing_id_number(conn, "credit_lines", "CL") + 1
+    return f"CL{next_value:03d}"
 
 
 def get_credit_lines(conn):
@@ -253,16 +359,20 @@ def get_credit_line(conn, cl_id):
 
 
 def create_credit_line(conn, data):
-    cl_id = next_cl_id(conn)
-    conn.execute(
-        "INSERT INTO credit_lines (id, bank_key, description, currency, amount, committed, start_date, end_date, note) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (cl_id, data["bank_key"], data.get("description"), data["currency"],
-         data["amount"], data["committed"], data["start_date"],
-         data.get("end_date") or None, data.get("note")),
-    )
-    conn.commit()
-    return cl_id
+    def op():
+        cfg = SEQUENCE_CONFIG["credit_lines"]
+        seq = _next_sequence_value(conn, "credit_lines")
+        cl_id = f"{cfg['prefix']}{seq:0{cfg['padding']}d}"
+        conn.execute(
+            "INSERT INTO credit_lines (id, bank_key, description, currency, amount, committed, start_date, end_date, note) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (cl_id, data["bank_key"], data.get("description"), data["currency"],
+             data["amount"], data["committed"], data["start_date"],
+             data.get("end_date") or None, data.get("note")),
+        )
+        return cl_id
+
+    return _run_in_write_tx(conn, op)
 
 
 def update_credit_line(conn, cl_id, data):
@@ -285,12 +395,13 @@ def delete_credit_line(conn, cl_id):
 
 def next_fv_id(conn):
     row = conn.execute(
-        "SELECT id FROM fixed_advances ORDER BY id DESC LIMIT 1"
+        "SELECT last_value FROM id_sequences WHERE name = 'fixed_advances'"
     ).fetchone()
-    if not row:
-        return "FV0001"
-    num = int(row["id"][2:]) + 1
-    return f"FV{num:04d}"
+    if row:
+        next_value = row["last_value"] + 1
+    else:
+        next_value = _max_existing_id_number(conn, "fixed_advances", "FV") + 1
+    return f"FV{next_value:04d}"
 
 
 def get_advances(conn):
@@ -312,17 +423,21 @@ def get_advance(conn, fv_id):
 
 
 def create_advance(conn, data):
-    fv_id = next_fv_id(conn)
-    conn.execute(
-        "INSERT INTO fixed_advances (id, bank, credit_line_id, start_date, end_date, "
-        "continuation_date, currency, amount_original, interest_amount) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (fv_id, data["bank"], data["credit_line_id"], data["start_date"],
-         data["end_date"], data["continuation_date"], data["currency"],
-         data["amount_original"], data["interest_amount"]),
-    )
-    conn.commit()
-    return fv_id
+    def op():
+        cfg = SEQUENCE_CONFIG["fixed_advances"]
+        seq = _next_sequence_value(conn, "fixed_advances")
+        fv_id = f"{cfg['prefix']}{seq:0{cfg['padding']}d}"
+        conn.execute(
+            "INSERT INTO fixed_advances (id, bank, credit_line_id, start_date, end_date, "
+            "continuation_date, currency, amount_original, interest_amount) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (fv_id, data["bank"], data["credit_line_id"], data["start_date"],
+             data["end_date"], data["continuation_date"], data["currency"],
+             data["amount_original"], data["interest_amount"]),
+        )
+        return fv_id
+
+    return _run_in_write_tx(conn, op)
 
 
 def update_advance(conn, fv_id, data):
