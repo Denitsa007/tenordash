@@ -66,6 +66,10 @@ The database (`fixed_advances.db`) is created automatically on first run.
 
 Phase 1 (core CRUD + dashboard) is complete. Phase 2 (Excel/CSV import, `.xlsx` auto-export for Power BI) is planned.
 
+## Release Process
+
+- Use `/Users/denitsa/Library/Mobile Documents/iCloud~md~obsidian/Documents/Obsidian Vault/TenorDash/RELEASE_CHECKLIST.md` before and after merging changes to `main`.
+
 ---
 
 Created by [Denitsa Stachowski](https://denitsa.ch)
