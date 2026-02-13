@@ -28,7 +28,7 @@ The reference/master table for borrowing facilities.
 | Credit Line ID | text (PK) | Auto-generated (`CL001`, `CL002`, ...) | Sequential                                |
 | Bank Key       | text      | Required                               | Internal bank identifier (e.g. `B003`)    |
 | Description    | text      | Optional                               | Free text                                 |
-| Currency       | text      | Required, enum: `CHF`, `EUR`, `GBP`, `USD` |                                           |
+| Currency       | text      | Required, references `currencies` table |                                           |
 | Amount         | integer   | Required, > 0                          | Facility size (e.g. 510,000,000)          |
 | Committed      | text      | Required, enum: `Yes`, `No`            | Whether facility is committed             |
 | Start Date     | date      | Required                               |                                           |
@@ -49,7 +49,7 @@ The main transaction table. One row per borrowing drawdown.
 | Start Date         | date      | Required                                 |                                            |
 | End Date           | date      | Required                                 | Maturity date                              |
 | Continuation Date  | date      | Required                                 | Auto-suggested: 3 business days before End Date; editable |
-| Currency           | text      | Required, enum: `CHF`, `EUR`, `GBP`, `USD` |                                            |
+| Currency           | text      | Required, references `currencies` table |                                            |
 | Amount Original    | integer   | Required, > 0                            | Face value                                 |
 | Interest Amount    | decimal   | Required, >= 0                           | Provided by bank                           |
 
@@ -82,10 +82,22 @@ Small reference table for bank dropdown values. Importable from Excel/CSV; edita
 
 **Current volume:** ~5 rows. Rarely changes.
 
-### 2.5 Reference Data
+### 2.5 Currencies (`currencies`)
 
-- **Currency list**: `CHF`, `EUR`, `GBP`, `USD` (hardcoded enum).
-- **FX rates**: ECB cross rates (EUR/CHF, GBP/CHF, USD/CHF) fetched from ECB Data API for credit line utilization calculations in CHF equivalent.
+Dynamic reference table for supported currencies. Ships with CHF, EUR, GBP, USD; new currencies can be added inline from any form.
+
+| Field         | Type    | Constraints       | Notes                                    |
+| ------------- | ------- | ----------------- | ---------------------------------------- |
+| Code          | text (PK) | 3-letter ISO    | e.g. `CHF`, `JPY`                       |
+| CSS Color     | text    | Required, hex     | Auto-assigned from 12-color palette      |
+| Display Order | integer | Required          | Controls dropdown/pill sort order        |
+| ECB Available | integer | 0 or 1            | Whether ECB publishes rates for this code |
+
+On creation, the app validates the code against the ECB Data API. Non-ECB currencies (e.g. exotic codes) are allowed but flagged with `ecb_available = 0`.
+
+### 2.6 Reference Data
+
+- **FX rates**: ECB cross rates fetched dynamically for all currencies with `ecb_available = 1`; converted to CHF per 1 unit of each currency; cached daily with automatic reset when currencies change.
 
 ---
 
@@ -150,11 +162,11 @@ Small reference table for bank dropdown values. Importable from Excel/CSV; edita
 
 ### Verdict: Low-to-Medium Complexity
 
-This is a straightforward CRUD app with a simple relational model (2 tables, 1 relationship) and a small dataset.
+This is a straightforward CRUD app with a simple relational model (4 tables, 1 relationship) and a small dataset.
 
 | Dimension | Assessment |
 |-----------|-----------|
-| **Data model** | Simple — 2 tables, 1 foreign key, handful of calculated fields |
+| **Data model** | Simple — 4 tables (banks, currencies, credit_lines, fixed_advances), 1 foreign key, handful of calculated fields |
 | **Business logic** | Minimal — date arithmetic, one interest rate formula, active flag |
 | **UI** | Standard — 2 input forms, 2 list views, 1 dashboard with summary cards |
 | **Integration** | Light — auto-export `.xlsx` for Power BI + ECB API for FX rates |
@@ -205,8 +217,8 @@ Recommendation depends on user preference for UI style and development speed vs.
 - [x] **Bank list management** — Small reference table (`tblBanks`), importable from Excel/CSV, editable in-app for rare additions.
 - [x] **Continuation date** — Auto-suggested as 3 business days before End Date; editable by user.
 - [x] **Power BI column/sheet names** — Must match the sample Excel file exactly.
-- [x] **FX conversion** — ECB Data API for CHF, GBP, USD cross rates via EUR (needed for credit line utilization in CHF equivalent).
-- [x] **Currencies** — CHF, EUR, GBP, USD; hardcoded enum.
+- [x] **FX conversion** — ECB Data API for dynamic cross rates via EUR (needed for credit line utilization in CHF equivalent). URL built dynamically from active currencies.
+- [x] **Currencies** — Dynamic via `currencies` table. Ships with CHF, EUR, GBP, USD; new currencies added inline with ECB validation and auto-assigned colors.
 - [x] **Power BI integration** — Auto-export `.xlsx` on save (no ODBC/driver dependencies).
 - [x] **Rolling calendar** — Not needed; removed from scope.
 
