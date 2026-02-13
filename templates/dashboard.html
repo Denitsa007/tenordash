@@ -109,15 +109,15 @@
   <table class="data-table" id="dash-table">
     <thead>
       <tr>
-        <th>ID</th>
-        <th>Bank</th>
-        <th>Credit Line</th>
-        <th>Currency</th>
-        <th style="text-align:right">Amount</th>
-        <th>Start</th>
-        <th>End</th>
-        <th>Continuation</th>
-        <th style="text-align:right">Rate p.a.</th>
+        <th data-sort="id">ID <span class="sort-indicator"></span></th>
+        <th data-sort="bank">Bank <span class="sort-indicator"></span></th>
+        <th data-sort="credit_line">Credit Line <span class="sort-indicator"></span></th>
+        <th data-sort="currency">Currency <span class="sort-indicator"></span></th>
+        <th data-sort="amount" style="text-align:right">Amount <span class="sort-indicator"></span></th>
+        <th data-sort="start">Start <span class="sort-indicator"></span></th>
+        <th data-sort="end">End <span class="sort-indicator"></span></th>
+        <th data-sort="continuation">Continuation <span class="sort-indicator"></span></th>
+        <th data-sort="rate" style="text-align:right">Rate p.a. <span class="sort-indicator"></span></th>
       </tr>
     </thead>
     <tbody>
@@ -129,11 +129,11 @@
         <td>{{ adv.bank }}</td>
         <td class="text-muted">{{ adv.credit_line_id }}</td>
         <td><span class="badge badge-{{ adv.currency|lower }}">{{ adv.currency }}</span></td>
-        <td class="mono text-right text-{{ adv.currency|lower }}">{{ adv.amount_original|amount }}</td>
-        <td>{{ adv.start_date|date_display }}</td>
-        <td>{{ adv.end_date|date_display }}</td>
-        <td class="{{ 'text-alert' if is_alert }}">{{ adv.continuation_date|date_display }}</td>
-        <td class="mono text-right">{{ adv.rate_pa|rate }}</td>
+        <td class="mono text-right text-{{ adv.currency|lower }}" data-sort-value="{{ adv.amount_original }}">{{ adv.amount_original|amount }}</td>
+        <td data-sort-value="{{ adv.start_date }}">{{ adv.start_date|date_display }}</td>
+        <td data-sort-value="{{ adv.end_date }}">{{ adv.end_date|date_display }}</td>
+        <td class="{{ 'text-alert' if is_alert }}" data-sort-value="{{ adv.continuation_date }}">{{ adv.continuation_date|date_display }}</td>
+        <td class="mono text-right" data-sort-value="{{ adv.rate_pa }}">{{ adv.rate_pa|rate }}</td>
       </tr>
       {% else %}
       <tr>
@@ -162,6 +162,53 @@
 
 {% block scripts %}
 <script>
+// ── Column sorting ──
+const numericSortKeys = new Set(['amount', 'rate']);
+
+function sortDashTable(key, th) {
+  const table = document.getElementById('dash-table');
+  const tbody = table.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr[data-currency]'));
+  if (!rows.length) return;
+
+  const headers = Array.from(table.querySelectorAll('thead th'));
+  const colIdx = headers.indexOf(th);
+
+  const prev = th.getAttribute('data-sort-dir');
+  const dir = prev === 'asc' ? 'desc' : 'asc';
+
+  headers.forEach(h => {
+    h.removeAttribute('data-sort-dir');
+    const ind = h.querySelector('.sort-indicator');
+    if (ind) ind.textContent = '';
+  });
+
+  th.setAttribute('data-sort-dir', dir);
+  th.querySelector('.sort-indicator').textContent = dir === 'asc' ? ' ▲' : ' ▼';
+
+  const isNumeric = numericSortKeys.has(key);
+
+  rows.sort((a, b) => {
+    const cellA = a.children[colIdx];
+    const cellB = b.children[colIdx];
+    let valA = cellA.getAttribute('data-sort-value') || cellA.textContent.trim();
+    let valB = cellB.getAttribute('data-sort-value') || cellB.textContent.trim();
+
+    if (isNumeric) {
+      valA = parseFloat(valA) || 0;
+      valB = parseFloat(valB) || 0;
+      return dir === 'asc' ? valA - valB : valB - valA;
+    }
+    return dir === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+  });
+
+  rows.forEach(row => tbody.appendChild(row));
+}
+
+document.querySelectorAll('#dash-table thead th[data-sort]').forEach(th => {
+  th.addEventListener('click', () => sortDashTable(th.dataset.sort, th));
+});
+
 function filterDash(filter, pill) {
   document.querySelectorAll('.section-header .filter-pills .pill').forEach(p => p.classList.remove('active'));
   pill.classList.add('active');
