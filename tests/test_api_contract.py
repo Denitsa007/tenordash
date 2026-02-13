@@ -14,17 +14,61 @@ else:
 @unittest.skipUnless(app_module is not None, "flask is not installed in this environment")
 class ApiContractTests(unittest.TestCase):
     def setUp(self):
-        self.tmpdir = tempfile.TemporaryDirectory()
-        self.orig_db_path = db.DB_PATH
-        db.DB_PATH = os.path.join(self.tmpdir.name, "test_api.db")
+        tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmpdir.cleanup)
+        db_path = os.path.join(tmpdir.name, "test_api.db")
+
+        orig_db_path = db.DB_PATH
+        self.addCleanup(setattr, db, "DB_PATH", orig_db_path)
+        db.DB_PATH = db_path
         db.init_db()
 
+        conn = db.get_db()
+        try:
+            conn.execute(
+                "INSERT INTO banks (bank_key, bank_name) VALUES (?, ?)",
+                ("B001", "Bank 1"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        orig_testing = app_module.app.config.get("TESTING")
+        orig_propagate = app_module.app.config.get("PROPAGATE_EXCEPTIONS")
+        self.addCleanup(app_module.app.config.__setitem__, "TESTING", orig_testing)
+        self.addCleanup(app_module.app.config.__setitem__, "PROPAGATE_EXCEPTIONS", orig_propagate)
         app_module.app.config["TESTING"] = True
+        app_module.app.config["PROPAGATE_EXCEPTIONS"] = False
         self.client = app_module.app.test_client()
 
-    def tearDown(self):
-        db.DB_PATH = self.orig_db_path
-        self.tmpdir.cleanup()
+    def _credit_line_payload(self):
+        return {
+            "bank_key": "B001",
+            "description": "Syndicated Facility",
+            "currency": "CHF",
+            "amount": 510_000_000,
+            "committed": "Yes",
+            "start_date": "2026-01-01",
+            "end_date": "2026-12-31",
+            "note": "Contract test",
+        }
+
+    def _advance_payload(self, cl_id):
+        return {
+            "bank": "Bank 1",
+            "credit_line_id": cl_id,
+            "start_date": "2026-01-10",
+            "end_date": "2026-02-10",
+            "continuation_date": "2026-02-05",
+            "currency": "CHF",
+            "amount_original": 50_000_000,
+            "interest_amount": 196_527.78,
+        }
+
+    def _create_credit_line(self):
+        res = self.client.post("/credit-lines", json=self._credit_line_payload())
+        self.assertEqual(res.status_code, 200)
+        return res.get_json()["id"]
 
     def test_suggest_continuation_validation(self):
         res = self.client.get("/api/suggest-continuation")
@@ -54,21 +98,16 @@ class ApiContractTests(unittest.TestCase):
         res = self.client.delete("/api/currencies/CHF")
         self.assertEqual(res.status_code, 400)
 
-    def test_credit_line_and_advance_happy_path(self):
-        res = self.client.post("/banks", json={"bank_key": "B001", "bank_name": "Bank 1"})
+    def test_bank_happy_path(self):
+        res = self.client.post("/banks", json={"bank_key": "B002", "bank_name": "Bank 2"})
         self.assertEqual(res.status_code, 200)
         self.assertTrue(res.get_json()["ok"])
 
-        cl_payload = {
-            "bank_key": "B001",
-            "description": "Syndicated Facility",
-            "currency": "CHF",
-            "amount": 510_000_000,
-            "committed": "Yes",
-            "start_date": "2026-01-01",
-            "end_date": "2026-12-31",
-            "note": "Contract test",
-        }
+        res = self.client.delete("/banks/B002")
+        self.assertEqual(res.status_code, 200)
+
+    def test_credit_line_happy_path(self):
+        cl_payload = self._credit_line_payload()
         res = self.client.post("/credit-lines", json=cl_payload)
         self.assertEqual(res.status_code, 200)
         cl_id = res.get_json()["id"]
@@ -83,16 +122,12 @@ class ApiContractTests(unittest.TestCase):
         res = self.client.put(f"/credit-lines/{cl_id}", json=update_payload)
         self.assertEqual(res.status_code, 200)
 
-        adv_payload = {
-            "bank": "Bank 1",
-            "credit_line_id": cl_id,
-            "start_date": "2026-01-10",
-            "end_date": "2026-02-10",
-            "continuation_date": "2026-02-05",
-            "currency": "CHF",
-            "amount_original": 50_000_000,
-            "interest_amount": 196_527.78,
-        }
+        res = self.client.delete(f"/credit-lines/{cl_id}")
+        self.assertEqual(res.status_code, 200)
+
+    def test_advance_happy_path(self):
+        cl_id = self._create_credit_line()
+        adv_payload = self._advance_payload(cl_id)
         res = self.client.post("/advances", json=adv_payload)
         self.assertEqual(res.status_code, 200)
         fv_id = res.get_json()["id"]
@@ -107,6 +142,14 @@ class ApiContractTests(unittest.TestCase):
         res = self.client.put(f"/advances/{fv_id}", json=adv_update)
         self.assertEqual(res.status_code, 200)
 
+        res = self.client.delete(f"/advances/{fv_id}")
+        self.assertEqual(res.status_code, 200)
+
+    def test_check_cl_capacity_happy_path(self):
+        cl_id = self._create_credit_line()
+        res = self.client.post("/advances", json=self._advance_payload(cl_id))
+        self.assertEqual(res.status_code, 200)
+
         res = self.client.get(f"/api/check-cl-capacity?cl_id={cl_id}&amount=1")
         self.assertEqual(res.status_code, 200)
         body = res.get_json()
@@ -115,21 +158,27 @@ class ApiContractTests(unittest.TestCase):
         self.assertIn("new_drawn", body)
         self.assertIn("exceeded", body)
 
-        res = self.client.delete(f"/advances/{fv_id}")
-        self.assertEqual(res.status_code, 200)
-
-        res = self.client.delete(f"/credit-lines/{cl_id}")
-        self.assertEqual(res.status_code, 200)
-
-        res = self.client.delete("/banks/B001")
-        self.assertEqual(res.status_code, 200)
-
     def test_not_found_get_endpoints(self):
         res = self.client.get("/credit-lines/CL999")
         self.assertEqual(res.status_code, 404)
 
         res = self.client.get("/advances/FV9999")
         self.assertEqual(res.status_code, 404)
+
+    def test_credit_line_create_missing_required_field_fails(self):
+        payload = self._credit_line_payload()
+        payload.pop("bank_key")
+
+        res = self.client.post("/credit-lines", json=payload)
+        self.assertIn(res.status_code, {400, 422, 500})
+
+    def test_advance_create_missing_required_field_fails(self):
+        cl_id = self._create_credit_line()
+        payload = self._advance_payload(cl_id)
+        payload.pop("amount_original")
+
+        res = self.client.post("/advances", json=payload)
+        self.assertIn(res.status_code, {400, 422, 500})
 
 
 if __name__ == "__main__":
