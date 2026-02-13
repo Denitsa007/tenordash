@@ -1,11 +1,12 @@
-import re
-from flask import Flask, render_template, request, jsonify
-from datetime import date
 from contextlib import contextmanager
+from datetime import date
+import re
+
+from flask import Flask, jsonify, render_template, request
 
 import db
-import helpers
 import ecb
+import helpers
 from config import CONTINUATION_ALERT_DAYS, BASE_CURRENCY
 
 app = Flask(__name__)

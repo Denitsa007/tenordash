@@ -101,6 +101,14 @@ class ApiContractTests(unittest.TestCase):
         res = self.client.delete("/api/currencies/CHF")
         self.assertEqual(res.status_code, 400)
 
+    def test_non_json_payload_returns_400(self):
+        res = self.client.post(
+            "/banks",
+            data="bank_key=B003&bank_name=Bank 3",
+            content_type="text/plain",
+        )
+        self.assertEqual(res.status_code, 400)
+
     def test_bank_happy_path(self):
         res = self.client.post("/banks", json={"bank_key": "B002", "bank_name": "Bank 2"})
         self.assertEqual(res.status_code, 200)
