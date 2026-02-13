@@ -15,7 +15,15 @@
 </div>
 
 <div class="section">
-  <table class="data-table">
+  <div class="section-header">
+    <h3>Credit Lines ({{ lines|selectattr('archived', 'equalto', 0)|list|length }})</h3>
+    <div class="filter-pills">
+      <span class="pill active" data-filter="active" onclick="filterCLs('active', this)">Active</span>
+      <span class="pill" data-filter="archived" onclick="filterCLs('archived', this)">Archived</span>
+      <span class="pill" data-filter="all" onclick="filterCLs('all', this)">All</span>
+    </div>
+  </div>
+  <table class="data-table" id="cl-table">
     <thead>
       <tr>
         <th>ID</th>
@@ -26,12 +34,13 @@
         <th>Committed</th>
         <th>Start</th>
         <th>End</th>
+        <th>Status</th>
         <th style="text-align:right">Actions</th>
       </tr>
     </thead>
     <tbody>
       {% for cl in lines %}
-      <tr>
+      <tr data-archived="{{ 'true' if cl.archived else 'false' }}">
         <td class="mono text-muted">{{ cl.id }}</td>
         <td>{{ cl.bank_name or cl.bank_key }}</td>
         <td>{{ cl.description or '' }}</td>
@@ -41,15 +50,26 @@
         <td>{{ cl.start_date|date_display }}</td>
         <td>{{ cl.end_date|date_display if cl.end_date else '—' }}</td>
         <td>
+          {% if cl.archived %}
+          <span class="badge badge-archived">Archived</span>
+          {% else %}
+          <span class="badge badge-active">Active</span>
+          {% endif %}
+        </td>
+        <td>
           <div class="row-actions">
+            {% if cl.archived %}
+            <button onclick="restoreCL('{{ cl.id }}')" title="Restore">&#8634;</button>
+            {% else %}
             <button onclick="editCL('{{ cl.id }}')" title="Edit">&#9998;</button>
-            <button class="delete" onclick="deleteCL('{{ cl.id }}')" title="Delete">&times;</button>
+            <button class="delete" onclick="archiveCL('{{ cl.id }}')" title="Archive">&#128451;</button>
+            {% endif %}
           </div>
         </td>
       </tr>
       {% else %}
       <tr>
-        <td colspan="9">
+        <td colspan="10">
           <div class="empty-state">
             <p>No credit lines yet.</p>
           </div>
@@ -201,10 +221,33 @@ if (new URLSearchParams(window.location.search).get('new')) {
   history.replaceState(null, '', '/credit-lines');
 }
 
-async function deleteCL(id) {
-  if (!confirm('Delete credit line ' + id + '?')) return;
+async function archiveCL(id) {
+  if (!confirm('Archive credit line ' + id + '?')) return;
   const res = await fetch('/credit-lines/' + id, { method: 'DELETE' });
   if (res.ok) location.reload();
+}
+
+async function restoreCL(id) {
+  const res = await fetch('/credit-lines/' + id + '/restore', { method: 'PATCH' });
+  if (res.ok) location.reload();
+}
+
+function filterCLs(filter, pill) {
+  document.querySelectorAll('.filter-pills .pill').forEach(p => p.classList.remove('active'));
+  pill.classList.add('active');
+  const rows = document.querySelectorAll('#cl-table tbody tr[data-archived]');
+  rows.forEach(row => {
+    const archived = row.dataset.archived === 'true';
+    if (filter === 'all') { row.style.display = ''; }
+    else if (filter === 'active') { row.style.display = archived ? 'none' : ''; }
+    else if (filter === 'archived') { row.style.display = archived ? '' : 'none'; }
+  });
+  // Update count in header
+  let visible = 0;
+  rows.forEach(r => { if (r.style.display !== 'none') visible++; });
+  const h3 = document.querySelector('.section-header h3');
+  const label = filter === 'all' ? 'All Credit Lines' : filter === 'archived' ? 'Archived Credit Lines' : 'Credit Lines';
+  h3.textContent = label + ' (' + visible + ')';
 }
 </script>
 {% endblock %}

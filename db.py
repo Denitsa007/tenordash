@@ -80,6 +80,7 @@ def init_db():
     _seed_currencies(conn)
     _migrate_add_czk_pln(conn)
     _migrate_remove_currency_check(conn)
+    _migrate_add_archived_column(conn)
     conn.commit()
     conn.close()
 
@@ -154,6 +155,13 @@ def _migrate_remove_currency_check(conn):
 
         PRAGMA foreign_keys = ON;
     """)
+
+
+def _migrate_add_archived_column(conn):
+    """Add archived column to credit_lines if not present."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(credit_lines)").fetchall()}
+    if "archived" not in cols:
+        conn.execute("ALTER TABLE credit_lines ADD COLUMN archived INTEGER NOT NULL DEFAULT 0")
 
 
 # ── Currencies ──
@@ -237,6 +245,17 @@ def next_cl_id(conn):
 
 
 def get_credit_lines(conn):
+    """Return only active (non-archived) credit lines."""
+    return conn.execute(
+        "SELECT cl.*, b.bank_name FROM credit_lines cl "
+        "LEFT JOIN banks b ON cl.bank_key = b.bank_key "
+        "WHERE cl.archived = 0 "
+        "ORDER BY cl.id"
+    ).fetchall()
+
+
+def get_all_credit_lines(conn):
+    """Return all credit lines including archived."""
     return conn.execute(
         "SELECT cl.*, b.bank_name FROM credit_lines cl "
         "LEFT JOIN banks b ON cl.bank_key = b.bank_key "
@@ -276,8 +295,13 @@ def update_credit_line(conn, cl_id, data):
     conn.commit()
 
 
-def delete_credit_line(conn, cl_id):
-    conn.execute("DELETE FROM credit_lines WHERE id = ?", (cl_id,))
+def archive_credit_line(conn, cl_id):
+    conn.execute("UPDATE credit_lines SET archived = 1 WHERE id = ?", (cl_id,))
+    conn.commit()
+
+
+def restore_credit_line(conn, cl_id):
+    conn.execute("UPDATE credit_lines SET archived = 0 WHERE id = ?", (cl_id,))
     conn.commit()
 
 
@@ -405,6 +429,7 @@ def get_cl_utilization(conn):
         "FROM credit_lines cl "
         "LEFT JOIN fixed_advances fa ON fa.credit_line_id = cl.id "
         "AND fa.start_date <= date('now') AND fa.end_date > date('now') "
+        "WHERE cl.archived = 0 "
         "GROUP BY cl.id "
         "ORDER BY cl.id"
     ).fetchall()

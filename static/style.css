@@ -393,7 +393,11 @@ body {
 .badge-gbp { background: #f0ebfe; color: var(--gbp); }
 .badge-usd { background: #fef3e2; color: var(--usd); }
 .badge-active { background: #e6f7f2; color: var(--chf); }
+.badge-archived { background: #f3f0f0; color: #998e8e; }
 .badge-expired { background: #f3f0f0; color: #998e8e; }
+
+tr[data-archived="true"] td { opacity: 0.55; }
+tr[data-archived="true"]:hover td { opacity: 0.75; }
 
 /* ── Slide-Out Panel ── */
 
