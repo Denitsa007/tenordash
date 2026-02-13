@@ -23,17 +23,17 @@ This is a **single-user, local-only** treasury management tool. No authenticatio
 
 The reference/master table for borrowing facilities.
 
-| Field | Type | Constraints | Notes |
-|-------|------|-------------|-------|
-| Credit Line ID | text (PK) | Auto-generated (`CL001`, `CL002`, ...) | Sequential |
-| Bank Key | text | Required | Internal bank identifier (e.g. `B003`) |
-| Description | text | Optional | Free text |
-| Currency | text | Required, enum: `CHF`, `EUR` | |
-| Amount | integer | Required, > 0 | Facility size (e.g. 510,000,000) |
-| Committed | text | Required, enum: `Yes`, `No` | Whether facility is committed |
-| Start Date | date | Required | |
-| End Date | date | Optional (nullable) | Null = open-ended |
-| Note | text | Optional | E.g. covenant ratios, cancellation status |
+| Field          | Type      | Constraints                            | Notes                                     |
+| -------------- | --------- | -------------------------------------- | ----------------------------------------- |
+| Credit Line ID | text (PK) | Auto-generated (`CL001`, `CL002`, ...) | Sequential                                |
+| Bank Key       | text      | Required                               | Internal bank identifier (e.g. `B003`)    |
+| Description    | text      | Optional                               | Free text                                 |
+| Currency       | text      | Required, enum: `CHF`, `EUR`, `GBP`, `USD` |                                           |
+| Amount         | integer   | Required, > 0                          | Facility size (e.g. 510,000,000)          |
+| Committed      | text      | Required, enum: `Yes`, `No`            | Whether facility is committed             |
+| Start Date     | date      | Required                               |                                           |
+| End Date       | date      | Optional (nullable)                    | Null = open-ended                         |
+| Note           | text      | Optional                               | E.g. covenant ratios, cancellation status |
 
 **Current volume:** 5 rows. Expected to stay small (< 20).
 
@@ -49,7 +49,7 @@ The main transaction table. One row per borrowing drawdown.
 | Start Date         | date      | Required                                 |                                            |
 | End Date           | date      | Required                                 | Maturity date                              |
 | Continuation Date  | date      | Required                                 | Auto-suggested: 3 business days before End Date; editable |
-| Currency           | text      | Required, enum: `CHF`, `EUR`             |                                            |
+| Currency           | text      | Required, enum: `CHF`, `EUR`, `GBP`, `USD` |                                            |
 | Amount Original    | integer   | Required, > 0                            | Face value                                 |
 | Interest Amount    | decimal   | Required, >= 0                           | Provided by bank                           |
 
@@ -84,8 +84,8 @@ Small reference table for bank dropdown values. Importable from Excel/CSV; edita
 
 ### 2.5 Reference Data
 
-- **Currency list**: `CHF`, `EUR` (hardcoded enum).
-- **FX rates**: EUR/CHF rate fetched from ECB API for credit line utilization calculations.
+- **Currency list**: `CHF`, `EUR`, `GBP`, `USD` (hardcoded enum).
+- **FX rates**: ECB cross rates (EUR/CHF, GBP/CHF, USD/CHF) fetched from ECB Data API for credit line utilization calculations in CHF equivalent.
 
 ---
 
@@ -109,6 +109,7 @@ Small reference table for bank dropdown values. Importable from Excel/CSV; edita
 | Auto-calculate on save | Days, Interest Rate p.a., Description, Is Currently Active                        |
 | List view              | Sortable/filterable table of all advances                                         |
 | Edit                   | All input fields editable; recalculate derived fields on save                     |
+| CL capacity warning    | On save, warns if the advance would exceed the linked credit line's facility; dismissable (user can save anyway) |
 | Import                 | Import historical data from Excel (same format as sample file); also import bank list from Excel/CSV |
 
 ### 3.3 Dashboard
@@ -116,9 +117,9 @@ Small reference table for bank dropdown values. Importable from Excel/CSV; edita
 | Requirement             | Detail                                                                                                                  |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------- |
 | Active instruments      | Filtered view: only rows where `Is Currently Active = true`                                                             |
-| Summary cards           | Total active amount by currency (CHF, EUR)                                                                              |
-| Continuation reminders  | Highlight advances with continuation date within next 7/14/30 days                                                      |
-| Credit line utilization | Amount drawn vs. facility size per credit line (this will require FX translation - ECB API can be used to get the rate) |
+| Summary cards           | Total active amount by currency (CHF, EUR, GBP, USD — shown dynamically for currencies with active instruments)         |
+| Continuation reminders  | Highlight advances with continuation date within next 7 days                                                             |
+| Credit line utilization | Amount drawn vs. facility size per credit line with progress bars; aggregate utilization card in CHF equivalent via ECB rates |
 
 ### 3.4 Power BI Integration
 
@@ -204,11 +205,11 @@ Recommendation depends on user preference for UI style and development speed vs.
 - [x] **Bank list management** — Small reference table (`tblBanks`), importable from Excel/CSV, editable in-app for rare additions.
 - [x] **Continuation date** — Auto-suggested as 3 business days before End Date; editable by user.
 - [x] **Power BI column/sheet names** — Must match the sample Excel file exactly.
-- [x] **FX conversion** — Use ECB API for EUR/CHF rates (needed for credit line utilization view).
-- [x] **Currencies** — CHF and EUR only; hardcoded enum.
+- [x] **FX conversion** — ECB Data API for CHF, GBP, USD cross rates via EUR (needed for credit line utilization in CHF equivalent).
+- [x] **Currencies** — CHF, EUR, GBP, USD; hardcoded enum.
 - [x] **Power BI integration** — Auto-export `.xlsx` on save (no ODBC/driver dependencies).
 - [x] **Rolling calendar** — Not needed; removed from scope.
 
 ## 9. Open Questions
 
-- [ ] Preferred technology stack / UI style — to be decided after reviewing UI examples
+- [x] Preferred technology stack / UI style — **Flask web UI** chosen after reviewing mockups (terminal TUI, web UI, desktop app)

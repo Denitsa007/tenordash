@@ -22,6 +22,8 @@
       <span class="pill" data-filter="active" onclick="filterAdvances('active', this)">Active</span>
       <span class="pill" data-filter="CHF" onclick="filterAdvances('CHF', this)">CHF</span>
       <span class="pill" data-filter="EUR" onclick="filterAdvances('EUR', this)">EUR</span>
+      <span class="pill" data-filter="GBP" onclick="filterAdvances('GBP', this)">GBP</span>
+      <span class="pill" data-filter="USD" onclick="filterAdvances('USD', this)">USD</span>
     </div>
   </div>
   <table class="data-table" id="advances-table">
@@ -48,7 +50,7 @@
         <td>{{ adv.bank }}</td>
         <td class="text-muted">{{ adv.credit_line_id }}</td>
         <td><span class="badge badge-{{ adv.currency|lower }}">{{ adv.currency }}</span></td>
-        <td class="mono text-right {{ 'text-green' if adv.currency == 'CHF' else 'text-blue' }}">{{ adv.amount_original|amount }}</td>
+        <td class="mono text-right text-{{ adv.currency|lower }}">{{ adv.amount_original|amount }}</td>
         <td>{{ adv.start_date|date_display }}</td>
         <td>{{ adv.end_date|date_display }}</td>
         <td>{{ adv.continuation_date|date_display }}</td>
@@ -97,7 +99,7 @@
         </div>
         <div class="form-group">
           <label>Credit Line</label>
-          <select id="adv-cl" required>
+          <select id="adv-cl" required onchange="dismissClWarning()">
             <option value="">Select...</option>
             {% for cl in lines %}
             <option value="{{ cl.id }}">{{ cl.id }} — {{ cl.description or cl.bank_name }}</option>
@@ -111,6 +113,8 @@
         <select id="adv-currency" required>
           <option value="CHF">CHF</option>
           <option value="EUR">EUR</option>
+          <option value="GBP">GBP</option>
+          <option value="USD">USD</option>
         </select>
       </div>
 
@@ -137,11 +141,11 @@
       <div class="form-row">
         <div class="form-group">
           <label>Amount</label>
-          <input type="number" id="adv-amount" required min="1" placeholder="e.g. 50000000" oninput="updateCalcPreview()" />
+          <input type="text" id="adv-amount" required placeholder="e.g. 50,000,000" oninput="formatAmountField(this); updateCalcPreview(); dismissClWarning()" inputmode="numeric" />
         </div>
         <div class="form-group">
           <label>Interest Amount</label>
-          <input type="number" id="adv-interest" required min="0" step="0.01" placeholder="e.g. 196527.78" oninput="updateCalcPreview()" />
+          <input type="text" id="adv-interest" required placeholder="e.g. 196,527.78" oninput="formatAmountField(this, true); updateCalcPreview()" inputmode="decimal" />
         </div>
       </div>
 
@@ -154,6 +158,11 @@
           <div class="calc-label">Rate p.a. (calc)</div>
           <div class="calc-value" id="calc-rate">—</div>
         </div>
+      </div>
+
+      <div class="cl-warning" id="cl-warning" style="display:none">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="#A62152"><path d="M7 0a7 7 0 100 14A7 7 0 007 0zm0 3a1 1 0 011 1v3a1 1 0 01-2 0V4a1 1 0 011-1zm0 7a1 1 0 110 2 1 1 0 010-2z"/></svg>
+        <span id="cl-warning-text"></span>
       </div>
 
       <div class="form-actions">
@@ -170,6 +179,49 @@
 
 {% block scripts %}
 <script>
+// Detect locale separators: e.g. "1,234.5" vs "1.234,5"
+const _decSep = (1.1).toLocaleString().charAt(1);
+const _thouSep = (1000).toLocaleString().length > 4 ? (1000).toLocaleString().charAt(1) : '';
+const _stripGroupRe = _thouSep ? new RegExp('\\' + _thouSep, 'g') : null;
+
+function parseNum(str) {
+  let s = (str || '');
+  if (_stripGroupRe) s = s.replace(_stripGroupRe, '');
+  if (_decSep !== '.') s = s.replace(_decSep, '.');
+  return parseFloat(s) || 0;
+}
+
+function formatAmountField(el, allowDecimals) {
+  const pos = el.selectionStart;
+  const oldLen = el.value.length;
+  // Strip everything except digits and locale decimal separator
+  let raw = el.value.replace(new RegExp('[^0-9' + (_decSep === '.' ? '\\.' : '\\' + _decSep) + ']', 'g'), '');
+  // Normalise to dot for splitting
+  if (_decSep !== '.') raw = raw.replace(_decSep, '.');
+  if (!allowDecimals) raw = raw.replace(/\./g, '');
+  if (!raw) { el.value = ''; return; }
+  const parts = raw.split('.');
+  parts[0] = parseInt(parts[0], 10).toLocaleString();
+  el.value = allowDecimals && parts.length > 1 ? parts[0] + _decSep + parts[1].slice(0, 2) : parts[0];
+  const newLen = el.value.length;
+  const newPos = Math.max(0, pos + (newLen - oldLen));
+  el.setSelectionRange(newPos, newPos);
+}
+
+function setAmountField(id, value, allowDecimals) {
+  const el = document.getElementById(id);
+  if (allowDecimals) {
+    el.value = parseFloat(value).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  } else {
+    el.value = parseInt(value).toLocaleString();
+  }
+}
+
+function dismissClWarning() {
+  clWarningAcknowledged = false;
+  document.getElementById('cl-warning').style.display = 'none';
+}
+
 function openAdvForm() {
   document.getElementById('adv-form-title').textContent = 'New Fixed Advance';
   document.getElementById('adv-form').reset();
@@ -177,6 +229,7 @@ function openAdvForm() {
   document.getElementById('cont-hint').style.display = 'none';
   document.getElementById('calc-days').textContent = '—';
   document.getElementById('calc-rate').textContent = '—';
+  dismissClWarning();
   document.getElementById('adv-panel').classList.add('show');
 }
 
@@ -196,10 +249,17 @@ async function editAdv(id) {
   document.getElementById('adv-start').value = d.start_date;
   document.getElementById('adv-end').value = d.end_date;
   document.getElementById('adv-cont').value = d.continuation_date;
-  document.getElementById('adv-amount').value = d.amount_original;
-  document.getElementById('adv-interest').value = d.interest_amount;
+  setAmountField('adv-amount', d.amount_original, false);
+  setAmountField('adv-interest', d.interest_amount, true);
   updateCalcPreview();
+  dismissClWarning();
   document.getElementById('adv-panel').classList.add('show');
+}
+
+let clWarningAcknowledged = false;
+
+function fmtAmount(n) {
+  return Math.round(n).toLocaleString();
 }
 
 async function saveAdv(e) {
@@ -211,10 +271,34 @@ async function saveAdv(e) {
     start_date: document.getElementById('adv-start').value,
     end_date: document.getElementById('adv-end').value,
     continuation_date: document.getElementById('adv-cont').value,
-    amount_original: parseInt(document.getElementById('adv-amount').value),
-    interest_amount: parseFloat(document.getElementById('adv-interest').value),
+    amount_original: parseNum(document.getElementById('adv-amount').value),
+    interest_amount: parseNum(document.getElementById('adv-interest').value),
   };
   const id = document.getElementById('adv-edit-id').value;
+
+  // Check credit line capacity (skip if user already acknowledged)
+  if (!clWarningAcknowledged && data.credit_line_id && data.amount_original > 0) {
+    const params = new URLSearchParams({
+      cl_id: data.credit_line_id,
+      amount: data.amount_original,
+    });
+    if (id) params.set('exclude', id);
+    const checkRes = await fetch('/api/check-cl-capacity?' + params);
+    if (checkRes.ok) {
+      const check = await checkRes.json();
+      if (check.exceeded) {
+        const warn = document.getElementById('cl-warning');
+        document.getElementById('cl-warning-text').textContent =
+          'This will exceed credit line ' + data.credit_line_id +
+          ' (' + fmtAmount(check.new_drawn) + ' / ' + fmtAmount(check.facility) + ' ' + data.currency + ').' +
+          ' Save again to proceed anyway.';
+        warn.style.display = 'flex';
+        clWarningAcknowledged = true;
+        return;
+      }
+    }
+  }
+
   const url = id ? '/advances/' + id : '/advances';
   const method = id ? 'PUT' : 'POST';
   const res = await fetch(url, {
@@ -247,8 +331,8 @@ async function suggestContinuation() {
 function updateCalcPreview() {
   const start = document.getElementById('adv-start').value;
   const end = document.getElementById('adv-end').value;
-  const amount = parseFloat(document.getElementById('adv-amount').value) || 0;
-  const interest = parseFloat(document.getElementById('adv-interest').value) || 0;
+  const amount = parseNum(document.getElementById('adv-amount').value);
+  const interest = parseNum(document.getElementById('adv-interest').value);
 
   if (start && end) {
     const days = Math.round((new Date(end) - new Date(start)) / 86400000);
@@ -264,6 +348,12 @@ function updateCalcPreview() {
 
 // Listen for start date changes too
 document.getElementById('adv-start').addEventListener('change', updateCalcPreview);
+
+// Auto-open form if ?new=1
+if (new URLSearchParams(window.location.search).get('new')) {
+  openAdvForm();
+  history.replaceState(null, '', '/advances');
+}
 
 function filterAdvances(filter, pill) {
   document.querySelectorAll('.filter-pills .pill').forEach(p => p.classList.remove('active'));
