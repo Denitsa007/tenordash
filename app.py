@@ -252,7 +252,7 @@ def check_cl_capacity():
         return jsonify({"error": "cl_id required"}), 400
     with db_conn() as conn:
         info = db.get_cl_drawn(conn, cl_id, exclude_fv_id=exclude)
-        if not info:
+        if not info or info.get("facility") is None:
             return jsonify({"error": "Credit line not found"}), 404
         new_drawn = info["drawn"] + amount
         exceeded = new_drawn > info["facility"]
