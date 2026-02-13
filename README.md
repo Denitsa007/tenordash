@@ -1,4 +1,4 @@
-# Fixed Advances App
+# TenorDash
 
 A local Flask web app for tracking treasury fixed advance borrowings — replacing an Excel-based workflow with structured data entry, automatic calculations, and a dashboard with continuation date alerts.
 
@@ -49,7 +49,7 @@ The database (`fixed_advances.db`) is created automatically on first run.
 │   ├── advances.html   # Advances list + slide-out form
 │   ├── credit_lines.html
 │   └── banks.html
-└── Fixed Advances App PRD.md  # Product requirements
+└── TenorDash PRD.md  # Product requirements
 ```
 
 ## Business Logic
