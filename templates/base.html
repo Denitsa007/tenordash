@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Fixed Advances{% endblock %}</title>
+  <title>{% block title %}TenorDash{% endblock %}</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
   <!-- Dynamic currency colors from DB -->
@@ -24,7 +24,7 @@
 <body>
   <nav class="sidebar">
     <div class="sidebar-logo">
-      Fixed Advances
+      TenorDash
       <small>Treasury Management</small>
     </div>
     <a href="/" class="nav-item {{ 'active' if active_page == 'dashboard' }}">
