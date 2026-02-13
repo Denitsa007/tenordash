@@ -1,10 +1,13 @@
 import urllib.request
+import urllib.error
 import json
+import logging
 from datetime import date
 
 from config import BASE_CURRENCY
 
 _cache = {"date": None, "rates": None}
+logger = logging.getLogger(__name__)
 
 # ECB publishes rates vs EUR. We fetch all ECB-available currencies
 # and convert to "BASE_CURRENCY per 1 unit of X".
@@ -98,7 +101,17 @@ def get_fx_rates(currency_rows=None):
         _cache["date"] = today
         _cache["rates"] = rates
         return rates, rate_date
-    except Exception:
+    except (
+        OSError,
+        urllib.error.URLError,
+        TimeoutError,
+        json.JSONDecodeError,
+        KeyError,
+        IndexError,
+        ValueError,
+        TypeError,
+    ) as exc:
+        logger.warning("ECB FX fetch failed, using fallback cache/base rate: %s", exc)
         return _cache.get("rates") or {BASE_CURRENCY: 1.0}, _cache.get("date")
 
 
@@ -124,5 +137,15 @@ def validate_currency_ecb(code):
         if dataset:
             return True, None
         return False, f"ECB does not publish rates for {code.upper()}"
-    except Exception:
+    except (
+        OSError,
+        urllib.error.URLError,
+        TimeoutError,
+        json.JSONDecodeError,
+        KeyError,
+        IndexError,
+        ValueError,
+        TypeError,
+    ) as exc:
+        logger.warning("ECB currency validation failed for %s: %s", code.upper(), exc)
         return False, f"Could not verify {code.upper()} against ECB (network error or unsupported currency)"
