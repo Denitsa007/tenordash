@@ -34,11 +34,7 @@ def export_xlsx(export_path=None):
     conn = db.get_db()
     try:
         if export_path is None:
-            try:
-                row = conn.execute("SELECT value FROM settings WHERE key = 'export_path'").fetchone()
-                export_path = row[0] if row and row[0] else EXPORT_PATH
-            except Exception:
-                export_path = EXPORT_PATH
+            export_path = db.get_setting(conn, "export_path", default=EXPORT_PATH)
         advances = conn.execute("SELECT * FROM fixed_advances ORDER BY id").fetchall()
         credit_lines = conn.execute("SELECT * FROM credit_lines ORDER BY id").fetchall()
     finally:

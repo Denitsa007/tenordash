@@ -9,7 +9,6 @@ import db
 import ecb
 import helpers
 from config import CONTINUATION_ALERT_DAYS, BASE_CURRENCY
-import export as export_module
 from export import export_xlsx
 
 app = Flask(__name__)
@@ -416,6 +415,9 @@ def update_setting():
     key = data["key"]
     value = data["value"]
 
+    if not isinstance(value, str) or not value.strip():
+        return jsonify({"ok": False, "error": "Value must be a non-empty string"}), 400
+
     if key == "display_unit":
         if value not in VALID_DISPLAY_UNITS:
             return jsonify({"ok": False, "error": f"display_unit must be one of: {', '.join(sorted(VALID_DISPLAY_UNITS))}"}), 400
@@ -436,10 +438,8 @@ def update_setting():
     with db_conn() as conn:
         db.set_setting(conn, key, value)
 
-    # Side-effects after successful save
+    # Trigger re-export with the new path so the file lands there immediately
     if key == "export_path":
-        export_module.EXPORT_PATH = value
-        export_module.EXPORT_FILE = os.path.join(value, "tenordash.xlsx")
         _try_export(export_path=value)
 
     return jsonify({"ok": True})
