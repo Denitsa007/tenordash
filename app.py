@@ -71,7 +71,7 @@ def build_continuation_calendar(alerts):
 
     days_in_month = (next_month - month_start).days
     leading_blanks = month_start.weekday()  # Monday=0
-    marked_dates = {a["continuation_date"] for a in alerts}
+    marked_dates = {str(a["continuation_date"]) for a in alerts}
 
     cells = []
     for _ in range(leading_blanks):
