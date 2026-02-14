@@ -57,7 +57,7 @@
           <div>{{ curr.code }}/{{ BASE_CURRENCY }}: {{ "%.4f"|format(fx_rates[curr.code]) }}</div>
         {% endif %}
       {% endfor %}
-      <div class="ecb-source">ECB {{ ecb_date or '' }}</div>
+      <div class="ecb-source">Source: ECB {{ ecb_date or '' }}</div>
     </div>
     {% endif %}
     <div class="nav-spacer"></div>
