@@ -25,7 +25,7 @@
     </thead>
     <tbody>
       {% for bank in banks %}
-      <tr data-key="{{ bank.bank_key }}">
+      <tr data-key="{{ bank.bank_key }}" data-id="{{ bank.bank_key }}">
         <td class="mono text-muted">{{ bank.bank_key }}</td>
         <td>{{ bank.bank_name }}</td>
         <td>
@@ -48,9 +48,38 @@
   </table>
 </div>
 
-<!-- Slide-out Panel -->
-<div class="panel-overlay" id="bank-panel">
-  <div class="slide-panel">
+<!-- View Modal -->
+<div class="modal-overlay" id="bank-view-modal">
+  <div class="modal-box" style="width: 400px;">
+    <h3>
+      <span id="bank-view-title"></span>
+      <button class="panel-close" onclick="closeBankView()">&times;</button>
+    </h3>
+    <div class="panel-view">
+      <div class="detail-grid">
+        <div class="detail-item">
+          <div class="detail-label">Bank Key</div>
+          <div class="detail-value mono" id="bank-view-key"></div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Bank Name</div>
+          <div class="detail-value" id="bank-view-name"></div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" onclick="closeBankView()">Close</button>
+        <button type="button" class="btn-primary" id="bank-view-edit-btn">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.5 1.5l2 2L4 12H2v-2z"/></svg>
+          Edit
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="bank-panel">
+  <div class="modal-box" style="width: 400px;">
     <h3>
       <span id="bank-form-title">Add Bank</span>
       <button class="panel-close" onclick="closeBankForm()">&times;</button>
@@ -78,6 +107,8 @@
 
 {% block scripts %}
 <script>
+let currentViewBankKey = null;
+
 function openBankForm(key, name) {
   document.getElementById('bank-form-title').textContent = key ? 'Edit Bank' : 'Add Bank';
   document.getElementById('bank-key').value = key || '';
@@ -91,9 +122,41 @@ function closeBankForm() {
   document.getElementById('bank-panel').classList.remove('show');
 }
 
+function closeBankView() {
+  document.getElementById('bank-view-modal').classList.remove('show');
+}
+
+function viewBank(key, name) {
+  currentViewBankKey = key;
+  document.getElementById('bank-view-title').textContent = name;
+  document.getElementById('bank-view-key').textContent = key;
+  document.getElementById('bank-view-name').textContent = name;
+  document.getElementById('bank-view-modal').classList.add('show');
+}
+
 function editBank(key, name) {
   openBankForm(key, name);
 }
+
+// "Edit" button inside view mode — close view, open edit
+document.getElementById('bank-view-edit-btn').addEventListener('click', function() {
+  if (currentViewBankKey) {
+    const name = document.getElementById('bank-view-name').textContent;
+    closeBankView();
+    editBank(currentViewBankKey, name);
+  }
+});
+
+// Row click → open view mode (skip clicks on action buttons)
+document.getElementById('banks-table').addEventListener('click', function(e) {
+  if (e.target.closest('.row-actions')) return;
+  const row = e.target.closest('tr[data-key]');
+  if (row) {
+    const key = row.dataset.key;
+    const name = row.children[1].textContent;
+    viewBank(key, name);
+  }
+});
 
 async function saveBank(e) {
   e.preventDefault();

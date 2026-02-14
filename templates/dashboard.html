@@ -62,7 +62,7 @@
           {% set alert_ids = alerts|map(attribute='id')|list %}
           {% for adv in active %}
           {% set is_alert = adv.id in alert_ids %}
-          <tr class="{{ 'alert-row' if is_alert }}" data-currency="{{ adv.currency }}">
+          <tr class="{{ 'alert-row' if is_alert }}" data-id="{{ adv.id }}" data-currency="{{ adv.currency }}">
             <td class="mono text-muted">{{ adv.id }}</td>
             <td>{{ adv.bank }}</td>
             <td class="text-muted">{{ adv.credit_line_id }}</td>
@@ -222,6 +222,72 @@
     {% endif %}
   </div>
 </div>
+<!-- View-only Modal -->
+<div class="modal-overlay" id="dash-panel">
+  <div class="modal-box" style="width: 480px;">
+    <h3>
+      <span id="dash-panel-title"></span>
+      <button class="panel-close" onclick="closeDashPanel()">&times;</button>
+    </h3>
+    <div class="panel-view">
+      <div class="detail-grid">
+        <div class="detail-item">
+          <div class="detail-label">Bank</div>
+          <div class="detail-value" id="dash-view-bank"></div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Credit Line</div>
+          <div class="detail-value" id="dash-view-cl"></div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Currency</div>
+          <div class="detail-value" id="dash-view-currency"></div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Amount</div>
+          <div class="detail-value mono" id="dash-view-amount"></div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Interest Amount</div>
+          <div class="detail-value mono" id="dash-view-interest"></div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Status</div>
+          <div class="detail-value" id="dash-view-status"></div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Start Date</div>
+          <div class="detail-value" id="dash-view-start"></div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">End Date</div>
+          <div class="detail-value" id="dash-view-end"></div>
+        </div>
+        <div class="detail-item full-width">
+          <div class="detail-label">Continuation Date</div>
+          <div class="detail-value" id="dash-view-cont"></div>
+        </div>
+      </div>
+      <div class="detail-calc">
+        <div>
+          <div class="calc-label">Days</div>
+          <div class="calc-value" id="dash-view-days"></div>
+        </div>
+        <div>
+          <div class="calc-label">Rate p.a.</div>
+          <div class="calc-value" id="dash-view-rate"></div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" onclick="closeDashPanel()">Close</button>
+        <a href="#" class="btn-primary" id="dash-view-edit-link">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.5 1.5l2 2L4 12H2v-2z"/></svg>
+          Edit
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -284,6 +350,46 @@ function filterDash(filter, pill) {
     }
   });
 }
+
+// ── View panel on row click ──
+
+function closeDashPanel() {
+  document.getElementById('dash-panel').classList.remove('show');
+}
+
+async function viewDashAdv(id) {
+  const res = await fetch('/advances/' + id);
+  if (!res.ok) return;
+  const d = await res.json();
+
+  document.getElementById('dash-panel-title').textContent = id;
+  document.getElementById('dash-view-bank').textContent = d.bank;
+  document.getElementById('dash-view-cl').textContent = d.credit_line_id;
+  document.getElementById('dash-view-currency').innerHTML =
+    '<span class="badge badge-' + d.currency.toLowerCase() + '">' + d.currency + '</span>';
+  document.getElementById('dash-view-amount').textContent = parseInt(d.amount_original).toLocaleString();
+  document.getElementById('dash-view-interest').textContent =
+    parseFloat(d.interest_amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  document.getElementById('dash-view-status').innerHTML = d.active
+    ? '<span class="badge badge-active">Active</span>'
+    : '<span class="badge badge-expired">Expired</span>';
+  document.getElementById('dash-view-start').textContent = formatDate(d.start_date);
+  document.getElementById('dash-view-end').textContent = formatDate(d.end_date);
+  document.getElementById('dash-view-cont').textContent = formatDate(d.continuation_date);
+  document.getElementById('dash-view-days').textContent = d.days;
+  document.getElementById('dash-view-rate').textContent =
+    d.rate_pa != null ? parseFloat(d.rate_pa).toFixed(4) + '%' : '\u2014';
+
+  // Edit link navigates to advances page with edit panel open
+  document.getElementById('dash-view-edit-link').href = '/advances#edit-' + id;
+
+  document.getElementById('dash-panel').classList.add('show');
+}
+
+document.getElementById('dash-table').addEventListener('click', function(e) {
+  const row = e.target.closest('tr[data-id]');
+  if (row) viewDashAdv(row.dataset.id);
+});
 
 function switchContinuationView(view, btn) {
   document.querySelectorAll('.continuation-view-switch .pill').forEach(p => p.classList.remove('active'));
