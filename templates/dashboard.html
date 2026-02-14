@@ -19,145 +19,151 @@
   </div>
 </div>
 
-<!-- Summary Cards -->
-<div class="cards">
-  {% for curr in currencies %}
-  {% if totals.get(curr.code) %}
-  <div class="card">
-    <div class="card-label">Active {{ curr.code }}</div>
-    <div class="card-value {{ curr.code|lower }}">{{ totals[curr.code].total|amount_short }}</div>
-    <div class="card-sub">{{ totals[curr.code].count }} instrument{{ 's' if totals[curr.code].count != 1 }}</div>
-  </div>
-  {% endif %}
-  {% endfor %}
-  <div class="card {{ 'alert-card' if alerts }}">
-    <div class="card-label">Continuations Due</div>
-    <div class="card-value">{{ alerts|length }}</div>
-    <div class="card-sub">within next 7 days</div>
-  </div>
-  <div class="card">
-    <div class="card-label">CL Utilization ({{ BASE_CURRENCY }} eq.)</div>
-    {% if utilization and fx_rates %}
-      {% set ns = namespace(drawn=0, facility=0) %}
-      {% for u in utilization %}
-        {% set rate = fx_rates.get(u.currency, 1.0) %}
-        {% set ns.drawn = ns.drawn + u.drawn_amount * rate %}
-        {% set ns.facility = ns.facility + u.facility_amount * rate %}
-      {% endfor %}
-      <div class="card-value">{{ ((ns.drawn / ns.facility * 100) if ns.facility > 0 else 0)|round|int }}%</div>
-      <div class="card-sub">{{ ns.drawn|int|amount_short }} / {{ ns.facility|int|amount_short }} {{ BASE_CURRENCY }}</div>
-    {% else %}
-      <div class="card-value">—</div>
-      <div class="card-sub">No credit lines</div>
-    {% endif %}
-  </div>
-</div>
-
-<!-- Credit Line Utilization -->
-{% if utilization %}
-<div class="section">
-  <div class="section-header">
-    <h3>Credit Line Utilization</h3>
-  </div>
-  <div style="padding: 16px 20px;">
-    {% for u in utilization %}
-    {% set pct = (u.drawn_amount / u.facility_amount * 100) if u.facility_amount > 0 else 0 %}
-    <div class="util-item">
-      <div class="util-header">
-        <strong>{{ u.id }} {{ u.description or '' }}</strong>
-        <span>{{ u.drawn_amount|amount_short }} / {{ u.facility_amount|amount_short }} {{ u.currency }}</span>
-      </div>
-      <div class="util-bar">
-        <div class="util-bar-fill {{ 'over' if pct > 100 else 'warn' if pct > 80 else u.currency|lower }}"
-             style="width: {{ [pct, 100]|min }}%"></div>
-      </div>
-    </div>
-    {% endfor %}
-  </div>
-</div>
-{% endif %}
-
-<!-- Continuation Alerts -->
-{% if alerts %}
-<div class="alert-box">
-  <div class="alert-title">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="#A62152"><path d="M7 0a7 7 0 100 14A7 7 0 007 0zm0 3a1 1 0 011 1v3a1 1 0 01-2 0V4a1 1 0 011-1zm0 7a1 1 0 110 2 1 1 0 010-2z"/></svg>
-    Upcoming Continuations
-  </div>
-  {% for a in alerts %}
-  <div class="alert-item">
-    <span><strong>{{ a.id }}</strong> &nbsp; {{ a.bank }} &middot; {{ a.currency }} {{ a.amount_original|amount }}</span>
-    <span style="color: #A62152; font-weight: 700;">
-      Due {{ a.continuation_date|date_display }}
-    </span>
-  </div>
-  {% endfor %}
-</div>
-{% endif %}
-
-<!-- Active Instruments Table -->
-<div class="section">
-  <div class="section-header">
-    <h3>Active Instruments ({{ active|length }})</h3>
-    <div class="filter-pills">
-      <span class="pill active" onclick="filterDash('all', this)">All</span>
+<div class="dashboard-grid">
+  <!-- Left column: Currency cards + Active Instruments -->
+  <div class="dashboard-main">
+    <div class="cards">
       {% for curr in currencies %}
-      <span class="pill" onclick="filterDash('{{ curr.code }}', this)">{{ curr.code }}</span>
+      {% if totals.get(curr.code) %}
+      <div class="card">
+        <div class="card-label">Active {{ curr.code }}</div>
+        <div class="card-value {{ curr.code|lower }}">{{ totals[curr.code].total|amount_short }}</div>
+        <div class="card-sub">{{ totals[curr.code].count }} instrument{{ 's' if totals[curr.code].count != 1 }}</div>
+      </div>
+      {% endif %}
       {% endfor %}
     </div>
-  </div>
-  <table class="data-table" id="dash-table">
-    <thead>
-      <tr>
-        <th data-sort="id">ID <span class="sort-indicator"></span></th>
-        <th data-sort="bank">Bank <span class="sort-indicator"></span></th>
-        <th data-sort="credit_line">Credit Line <span class="sort-indicator"></span></th>
-        <th data-sort="currency">Currency <span class="sort-indicator"></span></th>
-        <th data-sort="amount" style="text-align:right">Amount <span class="sort-indicator"></span></th>
-        <th data-sort="start">Start <span class="sort-indicator"></span></th>
-        <th data-sort="end">End <span class="sort-indicator"></span></th>
-        <th data-sort="continuation">Continuation <span class="sort-indicator"></span></th>
-        <th data-sort="rate" style="text-align:right">Rate p.a. <span class="sort-indicator"></span></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% set alert_ids = alerts|map(attribute='id')|list %}
-      {% for adv in active %}
-      {% set is_alert = adv.id in alert_ids %}
-      <tr class="{{ 'alert-row' if is_alert }}" data-currency="{{ adv.currency }}">
-        <td class="mono text-muted">{{ adv.id }}</td>
-        <td>{{ adv.bank }}</td>
-        <td class="text-muted">{{ adv.credit_line_id }}</td>
-        <td><span class="badge badge-{{ adv.currency|lower }}">{{ adv.currency }}</span></td>
-        <td class="mono text-right text-{{ adv.currency|lower }}" data-sort-value="{{ adv.amount_original }}">{{ adv.amount_original|amount }}</td>
-        <td data-sort-value="{{ adv.start_date }}">{{ adv.start_date|date_display }}</td>
-        <td data-sort-value="{{ adv.end_date }}">{{ adv.end_date|date_display }}</td>
-        <td class="{{ 'text-alert' if is_alert }}" data-sort-value="{{ adv.continuation_date }}">{{ adv.continuation_date|date_display }}</td>
-        <td class="mono text-right" data-sort-value="{{ adv.rate_pa }}">{{ adv.rate_pa|rate }}</td>
-      </tr>
-      {% else %}
-      <tr>
-        <td colspan="9">
-          <div class="empty-state">
-            <p>No active instruments.</p>
-          </div>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-</div>
 
-{% if fx_rates %}
-<div class="ecb-footer">
-  {% for curr in currencies %}
-    {% if curr.code != BASE_CURRENCY and fx_rates.get(curr.code) %}
-      {{ curr.code }}/{{ BASE_CURRENCY }}: {{ "%.4f"|format(fx_rates[curr.code]) }} &middot;
+    <div class="section">
+      <div class="section-header">
+        <h3>Active Instruments ({{ active|length }})</h3>
+        <div class="filter-pills">
+          <span class="pill active" onclick="filterDash('all', this)">All</span>
+          {% for curr in currencies %}
+          <span class="pill" onclick="filterDash('{{ curr.code }}', this)">{{ curr.code }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      <table class="data-table" id="dash-table">
+        <thead>
+          <tr>
+            <th data-sort="id">ID <span class="sort-indicator"></span></th>
+            <th data-sort="bank">Bank <span class="sort-indicator"></span></th>
+            <th data-sort="credit_line">Credit Line <span class="sort-indicator"></span></th>
+            <th data-sort="currency">Currency <span class="sort-indicator"></span></th>
+            <th data-sort="amount" style="text-align:right">Amount <span class="sort-indicator"></span></th>
+            <th data-sort="start">Start <span class="sort-indicator"></span></th>
+            <th data-sort="end">End <span class="sort-indicator"></span></th>
+            <th data-sort="continuation">Continuation <span class="sort-indicator"></span></th>
+            <th data-sort="rate" style="text-align:right">Rate p.a. <span class="sort-indicator"></span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set alert_ids = alerts|map(attribute='id')|list %}
+          {% for adv in active %}
+          {% set is_alert = adv.id in alert_ids %}
+          <tr class="{{ 'alert-row' if is_alert }}" data-currency="{{ adv.currency }}">
+            <td class="mono text-muted">{{ adv.id }}</td>
+            <td>{{ adv.bank }}</td>
+            <td class="text-muted">{{ adv.credit_line_id }}</td>
+            <td><span class="badge badge-{{ adv.currency|lower }}">{{ adv.currency }}</span></td>
+            <td class="mono text-right text-{{ adv.currency|lower }}" data-sort-value="{{ adv.amount_original }}">{{ adv.amount_original|amount }}</td>
+            <td data-sort-value="{{ adv.start_date }}">{{ adv.start_date|date_display }}</td>
+            <td data-sort-value="{{ adv.end_date }}">{{ adv.end_date|date_display }}</td>
+            <td class="{{ 'text-alert' if is_alert }}" data-sort-value="{{ adv.continuation_date }}">{{ adv.continuation_date|date_display }}</td>
+            <td class="mono text-right" data-sort-value="{{ adv.rate_pa }}">{{ adv.rate_pa|rate }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="9">
+              <div class="empty-state">
+                <p>No active instruments.</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Right column: sidebar -->
+  <div class="dashboard-sidebar">
+    <div class="card {{ 'alert-card' if alerts }}">
+      <div class="card-label">Continuations Due</div>
+      <div class="card-value">{{ alerts|length }}</div>
+      <div class="card-sub">within next 7 days</div>
+    </div>
+
+    {% if alerts %}
+    <div class="alert-box">
+      <div class="alert-title">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="#A62152"><path d="M7 0a7 7 0 100 14A7 7 0 007 0zm0 3a1 1 0 011 1v3a1 1 0 01-2 0V4a1 1 0 011-1zm0 7a1 1 0 110 2 1 1 0 010-2z"/></svg>
+        Upcoming Continuations
+      </div>
+      {% for a in alerts %}
+      <div class="alert-item">
+        <span><strong>{{ a.id }}</strong> &nbsp; {{ a.bank }} &middot; {{ a.currency }} {{ a.amount_original|amount }}</span>
+        <span style="color: #A62152; font-weight: 700;">
+          Due {{ a.continuation_date|date_display }}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
     {% endif %}
-  {% endfor %}
-  ECB {{ ecb_date or '' }}
+
+    <div class="card">
+      <div class="card-label">CL Utilization ({{ BASE_CURRENCY }} eq.)</div>
+      {% if utilization and fx_rates %}
+        {% set ns = namespace(drawn=0, facility=0) %}
+        {% for u in utilization %}
+          {% set rate = fx_rates.get(u.currency, 1.0) %}
+          {% set ns.drawn = ns.drawn + u.drawn_amount * rate %}
+          {% set ns.facility = ns.facility + u.facility_amount * rate %}
+        {% endfor %}
+        <div class="card-value">{{ ((ns.drawn / ns.facility * 100) if ns.facility > 0 else 0)|round|int }}%</div>
+        <div class="card-sub">{{ ns.drawn|int|amount_short }} / {{ ns.facility|int|amount_short }} {{ BASE_CURRENCY }}</div>
+      {% else %}
+        <div class="card-value">—</div>
+        <div class="card-sub">No credit lines</div>
+      {% endif %}
+    </div>
+
+    {% if utilization %}
+    <div class="section">
+      <div class="section-header">
+        <h3>Credit Line Utilization</h3>
+      </div>
+      <div style="padding: 16px 20px;">
+        {% for u in utilization %}
+        {% set pct = (u.drawn_amount / u.facility_amount * 100) if u.facility_amount > 0 else 0 %}
+        <div class="util-item">
+          <div class="util-header">
+            <strong>{{ u.id }} {{ u.description or '' }}</strong>
+            <span>{{ u.drawn_amount|amount_short }} / {{ u.facility_amount|amount_short }} {{ u.currency }}</span>
+          </div>
+          <div class="util-bar">
+            <div class="util-bar-fill {{ 'over' if pct > 100 else 'warn' if pct > 80 else u.currency|lower }}"
+                 style="width: {{ [pct, 100]|min }}%"></div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if fx_rates %}
+    <div class="ecb-footer">
+      {% for curr in currencies %}
+        {% if curr.code != BASE_CURRENCY and fx_rates.get(curr.code) %}
+          <div>{{ curr.code }}/{{ BASE_CURRENCY }}: {{ "%.4f"|format(fx_rates[curr.code]) }}</div>
+        {% endif %}
+      {% endfor %}
+      <div>Source: ECB {{ ecb_date or '' }}</div>
+    </div>
+    {% endif %}
+  </div>
 </div>
-{% endif %}
 {% endblock %}
 
 {% block scripts %}
