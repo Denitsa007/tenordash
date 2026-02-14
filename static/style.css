@@ -311,6 +311,181 @@ body {
 }
 .alert-item + .alert-item { border-top: 1px solid #f0d0dd; }
 
+/* ── Continuations Redesign Options ── */
+
+.continuations-widget {
+  background: #fdf2f6;
+  border: 1px solid #f0d0dd;
+  border-radius: 6px;
+  padding: 14px 14px 12px;
+  margin-bottom: 20px;
+}
+
+.continuation-view-switch {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.continuation-view-switch .pill {
+  padding: 3px 10px;
+  font-size: 10px;
+}
+
+.continuation-view {
+  display: none;
+}
+
+.continuation-view.is-active {
+  display: block;
+}
+
+/* Option 1: Date-left list */
+.continuation-row {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.continuation-row + .continuation-row {
+  border-top: 1px solid #f0d0dd;
+}
+
+.continuation-date-chip {
+  border-radius: 5px;
+  background: #fff;
+  border: 1px solid #f0d0dd;
+  text-align: center;
+  line-height: 1;
+  padding: 5px 2px;
+}
+
+.continuation-date-chip .day {
+  font-size: 16px;
+  font-weight: 700;
+  color: #7f173c;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.continuation-date-chip .mon {
+  margin-top: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #a62152;
+  letter-spacing: 0.04em;
+}
+
+.continuation-main .id-line {
+  font-size: 12px;
+  color: #6b1a3a;
+}
+
+.continuation-main .meta {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #925469;
+}
+
+.continuation-due {
+  font-size: 10px;
+  color: #a62152;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* Option 2: Timeline */
+.continuation-timeline-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 8px;
+  padding: 7px 0 7px 2px;
+}
+
+.continuation-timeline-item + .continuation-timeline-item {
+  border-top: 1px solid #f0d0dd;
+}
+
+.timeline-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #a62152;
+  margin-top: 4px;
+  box-shadow: 0 0 0 3px #f7dfe8;
+}
+
+.timeline-title {
+  font-size: 12px;
+  color: #6b1a3a;
+}
+
+.timeline-sub {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #925469;
+}
+
+/* Option 3: Mini calendar */
+.mini-calendar {
+  background: #fff;
+  border: 1px solid #f0d0dd;
+  border-radius: 6px;
+  padding: 8px 10px 10px;
+}
+
+.mini-cal-header {
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: #6b1a3a;
+}
+
+.mini-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.mini-cal-weekdays div {
+  font-size: 10px;
+  text-align: center;
+  color: #a57a89;
+}
+
+.mini-cal-day {
+  min-height: 22px;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 11px;
+  line-height: 22px;
+  color: #6b1a3a;
+}
+
+.mini-cal-day.marked {
+  background: #a62152;
+  color: #fff;
+  font-weight: 700;
+}
+
+.mini-cal-day.today {
+  outline: 1px dashed #a62152;
+  outline-offset: -2px;
+}
+
+.calendar-legend {
+  margin: 8px 0 6px;
+  font-size: 10px;
+  color: #8c586a;
+}
+
+.calendar-list-item {
+  font-size: 11px;
+  color: #6b1a3a;
+  padding: 3px 0;
+}
+
 /* ── Section / Table ── */
 
 .section {
