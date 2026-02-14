@@ -50,6 +50,16 @@
       <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 10a2 2 0 100-4 2 2 0 000 4zm6.32-1.906l-1.066-.616a5.21 5.21 0 000-1.956l1.066-.616a.5.5 0 00.183-.683l-1-1.732a.5.5 0 00-.683-.183l-1.066.616a5.163 5.163 0 00-1.694-.978V1.5a.5.5 0 00-.5-.5h-2a.5.5 0 00-.5.5v1.232a5.163 5.163 0 00-1.694.978L4.3 3.094a.5.5 0 00-.683.183l-1 1.732a.5.5 0 00.183.683l1.066.616a5.21 5.21 0 000 1.956l-1.066.616a.5.5 0 00-.183.683l1 1.732a.5.5 0 00.683.183l1.066-.616c.502.42 1.075.748 1.694.978V14.5a.5.5 0 00.5.5h2a.5.5 0 00.5-.5v-1.232a5.163 5.163 0 001.694-.978l1.066.616a.5.5 0 00.683-.183l1-1.732a.5.5 0 00-.183-.683z"/></svg>
       Settings
     </a>
+    {% if fx_rates is defined and fx_rates %}
+    <div class="ecb-footer sidebar-ecb">
+      {% for curr in currencies %}
+        {% if curr.code != BASE_CURRENCY and fx_rates.get(curr.code) %}
+          <div>{{ curr.code }}/{{ BASE_CURRENCY }}: {{ "%.4f"|format(fx_rates[curr.code]) }}</div>
+        {% endif %}
+      {% endfor %}
+      <div class="ecb-source">ECB {{ ecb_date or '' }}</div>
+    </div>
+    {% endif %}
     <div class="nav-spacer"></div>
     <div class="sidebar-monogram">
       <img src="{{ url_for('static', filename='logo.png') }}" alt="ds" title="Created by Denitsa Stachowski" />
