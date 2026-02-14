@@ -138,10 +138,15 @@ def dashboard():
             a["cont_day"] = cont.day
             a["cont_mon"] = cont.strftime("%b").upper()
             a["cont_weekday"] = cont.strftime("%a")
-        continuation_calendar = build_continuation_calendar(alerts)
+
+        # Calendar uses all continuations for the current month, not just 7-day alerts
+        today = date.today()
+        cal_rows = db.get_continuations_for_month(conn, today.year, today.month)
+        cal_advances = [helpers.enrich_advance(a) for a in cal_rows]
+        continuation_calendar = build_continuation_calendar(cal_advances)
 
         tooltip_map = {}
-        for a in alerts:
+        for a in cal_advances:
             d = a["continuation_date"]
             line = f"{a['id']} · {a['bank']} · {a['currency']} {int(a['amount_original']):,}"
             tooltip_map.setdefault(d, []).append(line)
@@ -171,7 +176,7 @@ def dashboard():
             utilization=utilization,
             continuation_calendar=continuation_calendar,
             tooltip_map=tooltip_map,
-            today=date.today().isoformat(),
+            today=today.isoformat(),
             cont_limit=upcoming_limit,
         )
 
