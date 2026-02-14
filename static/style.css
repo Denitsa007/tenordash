@@ -113,7 +113,6 @@ body {
   margin-left: 220px;
   padding: 28px 32px;
   min-height: 100vh;
-  position: relative;
 }
 
 .dashboard-grid {
@@ -151,7 +150,7 @@ body {
   color: var(--text);
 }
 
-.topbar-actions { display: flex; gap: 10px; align-items: center; margin-right: 40px; }
+.topbar-actions { display: flex; gap: 10px; align-items: center; }
 
 /* ── Sidebar Monogram ── */
 
@@ -705,21 +704,3 @@ tr[data-archived="true"]:hover td { opacity: 0.75; }
   margin-top: 8px;
 }
 
-/* ── Settings Button ── */
-
-.settings-btn {
-  position: absolute;
-  top: 28px;
-  right: 32px;
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 6px;
-  cursor: pointer;
-  color: var(--text-light);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-}
-.settings-btn:hover { color: var(--text); border-color: var(--border-medium); }

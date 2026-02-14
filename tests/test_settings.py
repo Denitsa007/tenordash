@@ -166,6 +166,16 @@ class SettingsApiTests(unittest.TestCase):
         self.assertEqual(res.status_code, 400)
         self.assertIn("Unknown setting", res.get_json()["error"])
 
+    def test_put_empty_value_rejected(self):
+        res = self.client.put("/api/settings", json={"key": "display_unit", "value": ""})
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("non-empty", res.get_json()["error"])
+
+    def test_put_whitespace_only_value_rejected(self):
+        res = self.client.put("/api/settings", json={"key": "display_unit", "value": "   "})
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("non-empty", res.get_json()["error"])
+
 
 @unittest.skipUnless(app_module is not None, "flask is not installed")
 class AmountShortFilterTests(unittest.TestCase):
