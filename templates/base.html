@@ -88,7 +88,7 @@
 
   <!-- Settings Modal -->
   <div class="modal-overlay" id="settings-modal">
-    <div class="modal-box" style="width: 420px;">
+    <div class="modal-box" style="width: 480px;">
       <h3>
         Settings
         <button class="panel-close" onclick="closeSettingsModal()">&times;</button>
@@ -104,8 +104,22 @@
         </div>
         <div class="form-group">
           <label>Export Path</label>
-          <input type="text" id="settings-export-path" placeholder="/path/to/export/folder" />
-          <div class="form-hint" style="color: var(--text-light);">Absolute path to the directory where .xlsx exports are saved</div>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="settings-export-path"
+                   placeholder="/path/to/export/folder" style="flex:1;" />
+            <button type="button" class="btn-secondary" id="browse-btn"
+                    onclick="openFolderBrowser()">Browse</button>
+          </div>
+          <div id="folder-browser" style="display:none;">
+            <div class="folder-breadcrumb" id="folder-breadcrumb"></div>
+            <div class="folder-list" id="folder-list"></div>
+            <div class="folder-actions">
+              <span class="folder-status" id="folder-status"></span>
+              <button type="button" class="btn-primary btn-sm" id="folder-select-btn"
+                      onclick="selectFolder()">Select this folder</button>
+            </div>
+          </div>
+          <div class="form-hint" style="color: var(--text-light);">Directory where .xlsx exports are saved</div>
         </div>
         <div class="currency-msg" id="settings-msg" style="display:none"></div>
         <div class="form-actions">

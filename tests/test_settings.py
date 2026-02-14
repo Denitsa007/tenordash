@@ -176,6 +176,46 @@ class SettingsApiTests(unittest.TestCase):
         self.assertEqual(res.status_code, 400)
         self.assertIn("non-empty", res.get_json()["error"])
 
+    # ── Browse Dirs ──
+
+    def test_browse_dirs_home(self):
+        res = self.client.get("/api/browse-dirs")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertIn("path", data)
+        self.assertIn("dirs", data)
+        self.assertIn("writable", data)
+        self.assertIsInstance(data["dirs"], list)
+
+    def test_browse_dirs_explicit_path(self):
+        res = self.client.get(f"/api/browse-dirs?path={self.tmpdir.name}")
+        self.assertEqual(res.status_code, 200)
+        data = res.get_json()
+        self.assertEqual(data["path"], self.tmpdir.name)
+
+    def test_browse_dirs_nonexistent(self):
+        res = self.client.get("/api/browse-dirs?path=/nonexistent/xyz")
+        self.assertEqual(res.status_code, 400)
+
+    def test_browse_dirs_relative(self):
+        res = self.client.get("/api/browse-dirs?path=relative")
+        self.assertEqual(res.status_code, 400)
+
+    def test_browse_dirs_hides_dotfiles(self):
+        os.makedirs(os.path.join(self.tmpdir.name, ".hidden"))
+        os.makedirs(os.path.join(self.tmpdir.name, "visible"))
+        res = self.client.get(f"/api/browse-dirs?path={self.tmpdir.name}")
+        data = res.get_json()
+        self.assertNotIn(".hidden", data["dirs"])
+        self.assertIn("visible", data["dirs"])
+
+    def test_browse_dirs_sorted(self):
+        for name in ["cherry", "apple", "banana"]:
+            os.makedirs(os.path.join(self.tmpdir.name, name))
+        res = self.client.get(f"/api/browse-dirs?path={self.tmpdir.name}")
+        data = res.get_json()
+        self.assertEqual(data["dirs"], ["apple", "banana", "cherry"])
+
 
 @unittest.skipUnless(app_module is not None, "flask is not installed")
 class AmountShortFilterTests(unittest.TestCase):
