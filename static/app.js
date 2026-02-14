@@ -1,15 +1,15 @@
-// Close slide-out panels when clicking overlay background
+// Close panels/modals when clicking overlay background
 document.addEventListener('click', function(e) {
-  if (e.target.classList.contains('panel-overlay')) {
+  if (e.target.classList.contains('panel-overlay') || e.target.classList.contains('modal-overlay')) {
     e.target.classList.remove('show');
   }
 });
 
-// Close panels on Escape key
+// Close panels/modals on Escape key
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
-    document.querySelectorAll('.panel-overlay.show').forEach(function(panel) {
-      panel.classList.remove('show');
+    document.querySelectorAll('.panel-overlay.show, .modal-overlay.show').forEach(function(el) {
+      el.classList.remove('show');
     });
   }
 });

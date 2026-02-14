@@ -292,15 +292,6 @@
 
 {% block scripts %}
 <script>
-// Close view modal on overlay click or Escape
-document.getElementById('dash-panel').addEventListener('click', function(e) {
-  if (e.target === this) closeDashPanel();
-});
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closeDashPanel();
-});
-</script>
-<script>
 // ── Column sorting ──
 const numericSortKeys = new Set(['amount', 'rate']);
 
