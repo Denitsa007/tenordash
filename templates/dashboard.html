@@ -144,12 +144,16 @@
         {% if continuation_calendar is defined %}
         <div class="mini-calendar">
           <div class="mini-cal-header">
-            <strong>{{ continuation_calendar.month_label }}</strong>
+            <button class="cal-nav-btn" type="button" onclick="navigateCalendar(-1)" aria-label="Previous month">&lsaquo;</button>
+            <strong id="cal-month-label"
+                    data-year="{{ continuation_calendar.year }}"
+                    data-month="{{ continuation_calendar.month }}">{{ continuation_calendar.month_label }}</strong>
+            <button class="cal-nav-btn" type="button" onclick="navigateCalendar(1)" aria-label="Next month">&rsaquo;</button>
           </div>
           <div class="mini-cal-grid mini-cal-weekdays">
             <div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div><div>Su</div>
           </div>
-          <div class="mini-cal-grid mini-cal-days">
+          <div class="mini-cal-grid mini-cal-days" id="cal-days-grid">
             {% for cell in continuation_calendar.cells %}
             <div class="mini-cal-day {{ 'marked' if cell.marked }} {{ 'today' if cell.today }}">
               {{ cell.day }}
@@ -159,10 +163,10 @@
         </div>
         <div class="calendar-legend">Accent markers = continuation dates</div>
         {% endif %}
-        <div class="calendar-list">
+        <div class="calendar-list" id="cal-list">
           {% for a in alerts %}
           <div class="calendar-list-item">
-            <strong>{{ a.cont_day }} {{ a.cont_mon }}</strong> · {{ a.id }} · {{ a.bank }}
+            <strong>{{ a.cont_day }} {{ a.cont_mon }}</strong> · {{ a.id }} · {{ a.bank }} · {{ a.currency }} {{ a.amount_original|amount }}
           </div>
           {% endfor %}
         </div>
@@ -397,6 +401,48 @@ function switchContinuationView(view, btn) {
   document.querySelectorAll('.continuation-view').forEach(v => v.classList.remove('is-active'));
   const target = document.getElementById('continuation-view-' + view);
   if (target) target.classList.add('is-active');
+}
+
+// ── Calendar month navigation ──
+
+async function navigateCalendar(delta) {
+  const label = document.getElementById('cal-month-label');
+  if (!label) return;
+
+  let year = parseInt(label.dataset.year, 10);
+  let month = parseInt(label.dataset.month, 10) + delta;
+
+  if (month < 1) { month = 12; year--; }
+  if (month > 12) { month = 1; year++; }
+
+  const res = await fetch('/api/continuation-calendar?year=' + year + '&month=' + month);
+  if (!res.ok) return;
+  const data = await res.json();
+  const cal = data.calendar;
+
+  // Update label
+  label.textContent = cal.month_label;
+  label.dataset.year = cal.year;
+  label.dataset.month = cal.month;
+
+  // Rebuild day grid
+  const grid = document.getElementById('cal-days-grid');
+  grid.innerHTML = cal.cells.map(function(c) {
+    const cls = ['mini-cal-day'];
+    if (c.marked) cls.push('marked');
+    if (c.today) cls.push('today');
+    return '<div class="' + cls.join(' ') + '">' + (c.day || '') + '</div>';
+  }).join('');
+
+  // Rebuild list
+  const list = document.getElementById('cal-list');
+  if (data.items.length === 0) {
+    list.innerHTML = '<div class="calendar-list-item" style="color:var(--text-muted)">No continuations this month</div>';
+  } else {
+    list.innerHTML = data.items.map(function(it) {
+      return '<div class="calendar-list-item"><strong>' + it.day + ' ' + it.mon + '</strong> · ' + it.id + ' · ' + it.bank + ' · ' + it.currency + ' ' + it.amount + '</div>';
+    }).join('');
+  }
 }
 </script>
 {% endblock %}
