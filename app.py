@@ -60,32 +60,40 @@ def validate_advance_date_order(data):
     return None
 
 
-def build_continuation_calendar(alerts):
-    """Build current-month calendar metadata with continuation dates marked."""
-    today = date.today()
-    month_start = date(today.year, today.month, 1)
+def build_continuation_calendar(alerts, year=None, month=None):
+    """Build calendar metadata for a given month with continuation dates marked.
 
-    if today.month == 12:
-        next_month = date(today.year + 1, 1, 1)
+    Defaults to the current month when year/month are None.
+    """
+    today = date.today()
+    year = year or today.year
+    month = month or today.month
+
+    month_start = date(year, month, 1)
+
+    if month == 12:
+        next_month = date(year + 1, 1, 1)
     else:
-        next_month = date(today.year, today.month + 1, 1)
+        next_month = date(year, month + 1, 1)
 
     days_in_month = (next_month - month_start).days
     leading_blanks = month_start.weekday()  # Monday=0
     marked_dates = {str(a["continuation_date"]) for a in alerts}
+
+    is_current_month = (year == today.year and month == today.month)
 
     cells = []
     for _ in range(leading_blanks):
         cells.append({"day": "", "date": None, "marked": False, "today": False})
 
     for day_num in range(1, days_in_month + 1):
-        day_date = date(today.year, today.month, day_num)
+        day_date = date(year, month, day_num)
         iso = day_date.isoformat()
         cells.append({
             "day": day_num,
             "date": iso,
             "marked": iso in marked_dates,
-            "today": day_date == today,
+            "today": is_current_month and day_date == today,
         })
 
     while len(cells) % 7 != 0:
@@ -93,6 +101,8 @@ def build_continuation_calendar(alerts):
 
     return {
         "month_label": month_start.strftime("%B %Y"),
+        "year": year,
+        "month": month,
         "cells": cells,
     }
 
@@ -382,6 +392,38 @@ def ecb_rate():
         currencies = [dict(r) for r in db.get_currencies(conn)]
         rates, rate_date = ecb.get_fx_rates(currencies)
         return jsonify({"rates": rates, "date": rate_date})
+
+
+@app.route("/api/continuation-calendar")
+def api_continuation_calendar():
+    try:
+        year = int(request.args.get("year", 0))
+        month = int(request.args.get("month", 0))
+    except (TypeError, ValueError):
+        return jsonify({"error": "year and month must be integers"}), 400
+
+    if not (1 <= month <= 12) or year < 1:
+        return jsonify({"error": "Invalid year/month"}), 400
+
+    with db_conn() as conn:
+        rows = db.get_continuations_for_month(conn, year, month)
+        alerts = [helpers.enrich_advance(a) for a in rows]
+        for a in alerts:
+            cont = date.fromisoformat(a["continuation_date"])
+            a["cont_day"] = cont.day
+            a["cont_mon"] = cont.strftime("%b").upper()
+
+        calendar = build_continuation_calendar(alerts, year, month)
+
+        items = [
+            {"day": a["cont_day"], "mon": a["cont_mon"],
+             "id": a["id"], "bank": a["bank"],
+             "currency": a["currency"],
+             "amount": f"{int(a['amount_original']):,}"}
+            for a in alerts
+        ]
+
+        return jsonify({"calendar": calendar, "items": items})
 
 
 # ── Currency Management API ──
