@@ -8,8 +8,16 @@ import db
 import ecb
 import helpers
 from config import CONTINUATION_ALERT_DAYS, BASE_CURRENCY
+from export import export_xlsx
 
 app = Flask(__name__)
+
+
+def _try_export():
+    try:
+        export_xlsx()
+    except Exception:
+        app.logger.exception("Auto-export failed")
 
 
 @contextmanager
@@ -134,6 +142,7 @@ def create_credit_line():
 
     with db_conn() as conn:
         cl_id = db.create_credit_line(conn, data)
+        _try_export()
         return jsonify({"ok": True, "id": cl_id})
 
 
@@ -156,6 +165,7 @@ def update_credit_line(cl_id):
 
     with db_conn() as conn:
         db.update_credit_line(conn, cl_id, data)
+        _try_export()
         return jsonify({"ok": True})
 
 
@@ -163,6 +173,7 @@ def update_credit_line(cl_id):
 def archive_credit_line(cl_id):
     with db_conn() as conn:
         db.archive_credit_line(conn, cl_id)
+        _try_export()
         return jsonify({"ok": True})
 
 
@@ -170,6 +181,7 @@ def archive_credit_line(cl_id):
 def restore_credit_line(cl_id):
     with db_conn() as conn:
         db.restore_credit_line(conn, cl_id)
+        _try_export()
         return jsonify({"ok": True})
 
 
@@ -207,6 +219,7 @@ def create_advance():
 
     with db_conn() as conn:
         fv_id = db.create_advance(conn, data)
+        _try_export()
         return jsonify({"ok": True, "id": fv_id})
 
 
@@ -241,6 +254,7 @@ def update_advance(fv_id):
 
     with db_conn() as conn:
         db.update_advance(conn, fv_id, data)
+        _try_export()
         return jsonify({"ok": True})
 
 
@@ -248,6 +262,7 @@ def update_advance(fv_id):
 def delete_advance(fv_id):
     with db_conn() as conn:
         db.delete_advance(conn, fv_id)
+        _try_export()
         return jsonify({"ok": True})
 
 
