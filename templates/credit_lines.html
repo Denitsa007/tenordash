@@ -40,7 +40,7 @@
     </thead>
     <tbody>
       {% for cl in lines %}
-      <tr data-archived="{{ 'true' if cl.archived else 'false' }}">
+      <tr data-id="{{ cl.id }}" data-archived="{{ 'true' if cl.archived else 'false' }}">
         <td class="mono text-muted">{{ cl.id }}</td>
         <td>{{ cl.bank_name or cl.bank_key }}</td>
         <td>{{ cl.description or '' }}</td>
@@ -84,10 +84,61 @@
 <div class="panel-overlay" id="cl-panel">
   <div class="slide-panel">
     <h3>
-      <span id="cl-form-title">New Credit Line</span>
+      <span id="cl-panel-title">New Credit Line</span>
       <button class="panel-close" onclick="closeCLForm()">&times;</button>
     </h3>
-    <form id="cl-form" onsubmit="saveCL(event)">
+
+    <!-- View mode -->
+    <div id="cl-view" class="panel-view" style="display:none">
+      <div class="detail-grid">
+        <div class="detail-item">
+          <div class="detail-label">Bank</div>
+          <div class="detail-value" id="cl-view-bank"></div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Description</div>
+          <div class="detail-value" id="cl-view-description"></div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Currency</div>
+          <div class="detail-value" id="cl-view-currency"></div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Amount</div>
+          <div class="detail-value mono" id="cl-view-amount"></div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Committed</div>
+          <div class="detail-value" id="cl-view-committed"></div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Status</div>
+          <div class="detail-value" id="cl-view-status"></div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Start Date</div>
+          <div class="detail-value" id="cl-view-start"></div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">End Date</div>
+          <div class="detail-value" id="cl-view-end"></div>
+        </div>
+        <div class="detail-item full-width">
+          <div class="detail-label">Note</div>
+          <div class="detail-value" id="cl-view-note"></div>
+        </div>
+      </div>
+      <div class="form-actions" id="cl-view-actions">
+        <button type="button" class="btn-secondary" onclick="closeCLForm()">Close</button>
+        <button type="button" class="btn-primary" id="cl-view-edit-btn">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.5 1.5l2 2L4 12H2v-2z"/></svg>
+          Edit
+        </button>
+      </div>
+    </div>
+
+    <!-- Edit mode -->
+    <form id="cl-form" onsubmit="saveCL(event)" style="display:none">
       <input type="hidden" id="cl-edit-id" value="" />
       <div class="form-group">
         <label>Bank</label>
@@ -162,11 +213,19 @@ function formatCLAmount(el) {
 
 let editingCLId = null;
 
+function showCLPanel(mode) {
+  const view = document.getElementById('cl-view');
+  const form = document.getElementById('cl-form');
+  view.style.display = mode === 'view' ? 'block' : 'none';
+  form.style.display = mode === 'edit' ? 'block' : 'none';
+}
+
 function openCLForm() {
   editingCLId = null;
-  document.getElementById('cl-form-title').textContent = 'New Credit Line';
+  document.getElementById('cl-panel-title').textContent = 'New Credit Line';
   document.getElementById('cl-form').reset();
   document.getElementById('cl-edit-id').value = '';
+  showCLPanel('edit');
   document.getElementById('cl-panel').classList.add('show');
 }
 
@@ -174,12 +233,41 @@ function closeCLForm() {
   document.getElementById('cl-panel').classList.remove('show');
 }
 
+let currentViewCLId = null;
+
+async function viewCL(id) {
+  const res = await fetch('/credit-lines/' + id);
+  if (!res.ok) return;
+  const data = await res.json();
+  currentViewCLId = id;
+
+  document.getElementById('cl-panel-title').textContent = id;
+  document.getElementById('cl-view-bank').textContent = data.bank_name || data.bank_key;
+  document.getElementById('cl-view-description').textContent = data.description || '—';
+  document.getElementById('cl-view-currency').innerHTML =
+    '<span class="badge badge-' + data.currency.toLowerCase() + '">' + data.currency + '</span>';
+  document.getElementById('cl-view-amount').textContent = parseInt(data.amount).toLocaleString();
+  document.getElementById('cl-view-committed').textContent = data.committed;
+  document.getElementById('cl-view-status').innerHTML = data.archived
+    ? '<span class="badge badge-archived">Archived</span>'
+    : '<span class="badge badge-active">Active</span>';
+  document.getElementById('cl-view-start').textContent = formatDate(data.start_date);
+  document.getElementById('cl-view-end').textContent = formatDate(data.end_date);
+  document.getElementById('cl-view-note').textContent = data.note || '—';
+
+  // Hide Edit button for archived lines
+  document.getElementById('cl-view-edit-btn').style.display = data.archived ? 'none' : '';
+
+  showCLPanel('view');
+  document.getElementById('cl-panel').classList.add('show');
+}
+
 async function editCL(id) {
   const res = await fetch('/credit-lines/' + id);
   if (!res.ok) return;
   const data = await res.json();
   editingCLId = id;
-  document.getElementById('cl-form-title').textContent = 'Edit ' + id;
+  document.getElementById('cl-panel-title').textContent = 'Edit ' + id;
   document.getElementById('cl-edit-id').value = id;
   document.getElementById('cl-bank').value = data.bank_key;
   document.getElementById('cl-description').value = data.description || '';
@@ -189,8 +277,21 @@ async function editCL(id) {
   document.getElementById('cl-start').value = data.start_date;
   document.getElementById('cl-end').value = data.end_date || '';
   document.getElementById('cl-note').value = data.note || '';
+  showCLPanel('edit');
   document.getElementById('cl-panel').classList.add('show');
 }
+
+// "Edit" button inside view mode
+document.getElementById('cl-view-edit-btn').addEventListener('click', function() {
+  if (currentViewCLId) editCL(currentViewCLId);
+});
+
+// Row click → open view mode (skip clicks on action buttons)
+document.getElementById('cl-table').addEventListener('click', function(e) {
+  if (e.target.closest('.row-actions')) return;
+  const row = e.target.closest('tr[data-id]');
+  if (row) viewCL(row.dataset.id);
+});
 
 async function saveCL(e) {
   e.preventDefault();
