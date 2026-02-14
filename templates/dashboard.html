@@ -141,6 +141,7 @@
 
       <!-- Option 3: Calendar + compact list -->
       <div class="continuation-view" id="continuation-view-calendar">
+        {% if continuation_calendar is defined %}
         <div class="mini-calendar">
           <div class="mini-cal-header">
             <strong>{{ continuation_calendar.month_label }}</strong>
@@ -157,6 +158,7 @@
           </div>
         </div>
         <div class="calendar-legend">Accent markers = continuation dates</div>
+        {% endif %}
         <div class="calendar-list">
           {% for a in alerts %}
           <div class="calendar-list-item">

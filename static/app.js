@@ -169,6 +169,13 @@ async function saveSettings(e) {
   location.reload();
 }
 
+// Format ISO date string as "Mon DD, YYYY" for view panels.
+function formatDate(iso) {
+  if (!iso) return '\u2014';
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 // Shared locale-aware number parsing/formatting helpers for forms.
 window.TDNumber = (function() {
   const decSep = (1.1).toLocaleString().charAt(1);
