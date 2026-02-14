@@ -8,8 +8,19 @@ import db
 import ecb
 import helpers
 from config import CONTINUATION_ALERT_DAYS, BASE_CURRENCY
+from export import export_xlsx
 
 app = Flask(__name__)
+
+
+def _try_export():
+    """Run export; return warning string on failure, None on success."""
+    try:
+        export_xlsx()
+        return None
+    except Exception:
+        app.logger.exception("Auto-export failed")
+        return "Auto-export failed — see server log for details"
 
 
 @contextmanager
@@ -88,6 +99,8 @@ def dashboard():
 
 
 # ── Banks ──
+# No _try_export() here: banks are not exported to xlsx.  Advances and
+# credit lines reference banks by key, which never changes via upsert.
 
 @app.route("/banks")
 def banks_page():
@@ -134,7 +147,11 @@ def create_credit_line():
 
     with db_conn() as conn:
         cl_id = db.create_credit_line(conn, data)
-        return jsonify({"ok": True, "id": cl_id})
+        warn = _try_export()
+        resp = {"ok": True, "id": cl_id}
+        if warn:
+            resp["export_warning"] = warn
+        return jsonify(resp)
 
 
 @app.route("/credit-lines/<cl_id>", methods=["GET"])
@@ -156,21 +173,33 @@ def update_credit_line(cl_id):
 
     with db_conn() as conn:
         db.update_credit_line(conn, cl_id, data)
-        return jsonify({"ok": True})
+        warn = _try_export()
+        resp = {"ok": True}
+        if warn:
+            resp["export_warning"] = warn
+        return jsonify(resp)
 
 
 @app.route("/credit-lines/<cl_id>", methods=["DELETE"])
 def archive_credit_line(cl_id):
     with db_conn() as conn:
         db.archive_credit_line(conn, cl_id)
-        return jsonify({"ok": True})
+        warn = _try_export()
+        resp = {"ok": True}
+        if warn:
+            resp["export_warning"] = warn
+        return jsonify(resp)
 
 
 @app.route("/credit-lines/<cl_id>/restore", methods=["PATCH"])
 def restore_credit_line(cl_id):
     with db_conn() as conn:
         db.restore_credit_line(conn, cl_id)
-        return jsonify({"ok": True})
+        warn = _try_export()
+        resp = {"ok": True}
+        if warn:
+            resp["export_warning"] = warn
+        return jsonify(resp)
 
 
 # ── Fixed Advances ──
@@ -207,7 +236,11 @@ def create_advance():
 
     with db_conn() as conn:
         fv_id = db.create_advance(conn, data)
-        return jsonify({"ok": True, "id": fv_id})
+        warn = _try_export()
+        resp = {"ok": True, "id": fv_id}
+        if warn:
+            resp["export_warning"] = warn
+        return jsonify(resp)
 
 
 @app.route("/advances/<fv_id>", methods=["GET"])
@@ -241,14 +274,22 @@ def update_advance(fv_id):
 
     with db_conn() as conn:
         db.update_advance(conn, fv_id, data)
-        return jsonify({"ok": True})
+        warn = _try_export()
+        resp = {"ok": True}
+        if warn:
+            resp["export_warning"] = warn
+        return jsonify(resp)
 
 
 @app.route("/advances/<fv_id>", methods=["DELETE"])
 def delete_advance(fv_id):
     with db_conn() as conn:
         db.delete_advance(conn, fv_id)
-        return jsonify({"ok": True})
+        warn = _try_export()
+        resp = {"ok": True}
+        if warn:
+            resp["export_warning"] = warn
+        return jsonify(resp)
 
 
 # ── API Endpoints ──
