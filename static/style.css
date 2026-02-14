@@ -704,3 +704,51 @@ tr[data-archived="true"]:hover td { opacity: 0.75; }
   margin-top: 8px;
 }
 
+/* ── Folder Browser ── */
+
+.folder-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px 4px 0 0;
+  font-size: 12px;
+  margin-top: 8px;
+}
+.folder-breadcrumb span { color: var(--text-light); }
+.folder-breadcrumb a {
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: none;
+}
+.folder-breadcrumb a:hover { text-decoration: underline; }
+
+.folder-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+}
+.folder-item {
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.folder-item:last-child { border-bottom: none; }
+.folder-item:hover { background: var(--bg); }
+
+.folder-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+.folder-status { font-size: 11px; color: var(--text-light); }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
