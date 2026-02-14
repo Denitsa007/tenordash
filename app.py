@@ -449,11 +449,18 @@ def get_settings():
     return jsonify(settings)
 
 
+VALID_SETTINGS = {"export_path"}
+
+
 @app.route("/api/settings", methods=["PUT"])
 def update_settings():
     data, err = parse_json()
     if err:
         return err
+
+    unknown = set(data.keys()) - VALID_SETTINGS
+    if unknown:
+        return jsonify({"ok": False, "error": f"Unknown setting(s): {', '.join(sorted(unknown))}"}), 400
 
     export_path = data.get("export_path")
     if export_path is not None:
@@ -473,6 +480,12 @@ def update_settings():
 
 @app.route("/api/browse-dirs")
 def browse_dirs():
+    """List subdirectories at a given path for the folder browser UI.
+
+    Security note: this endpoint exposes the server's directory structure.
+    It is safe for local-only use (localhost). If the app is ever exposed
+    to a network, add authentication or restrict the browsable root.
+    """
     path = request.args.get("path", os.path.expanduser("~"))
     path = os.path.expanduser(path)
     if not os.path.isabs(path):

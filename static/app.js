@@ -79,30 +79,55 @@ async function navigateToFolder(path) {
 
   currentBrowsePath = data.path;
 
-  // Render breadcrumb
+  // Render breadcrumb using data-path attributes (no inline handlers)
+  var bcEl = document.getElementById('folder-breadcrumb');
+  bcEl.innerHTML = '';
+  var rootLink = document.createElement('a');
+  rootLink.textContent = '/';
+  rootLink.dataset.path = '/';
+  bcEl.appendChild(rootLink);
+
   var parts = data.path.split('/').filter(Boolean);
-  var bc = '<a onclick="navigateToFolder(\'/\')">/</a>';
   var cumulative = '';
   parts.forEach(function(p, i) {
     cumulative += '/' + p;
     if (i === parts.length - 1) {
-      bc += ' <span>' + escapeHtml(p) + '</span>';
+      var span = document.createElement('span');
+      span.textContent = ' ' + p;
+      bcEl.appendChild(span);
     } else {
-      bc += ' <a onclick="navigateToFolder(\'' + escapeAttr(cumulative) + '\')">' + escapeHtml(p) + '</a> <span>/</span>';
+      var sep = document.createElement('span');
+      sep.textContent = ' ';
+      bcEl.appendChild(sep);
+      var link = document.createElement('a');
+      link.textContent = p;
+      link.dataset.path = cumulative;
+      bcEl.appendChild(link);
+      var slash = document.createElement('span');
+      slash.textContent = ' /';
+      bcEl.appendChild(slash);
     }
   });
-  document.getElementById('folder-breadcrumb').innerHTML = bc;
 
-  // Render directory list
+  // Render directory list using data-path attributes
   var listEl = document.getElementById('folder-list');
+  listEl.innerHTML = '';
   if (data.dirs.length === 0) {
-    listEl.innerHTML = '<div class="folder-item" style="color:var(--text-light)">No subdirectories</div>';
+    var empty = document.createElement('div');
+    empty.className = 'folder-item';
+    empty.style.color = 'var(--text-light)';
+    empty.textContent = 'No subdirectories';
+    listEl.appendChild(empty);
   } else {
-    listEl.innerHTML = data.dirs.map(function(d) {
+    data.dirs.forEach(function(d) {
       var fullPath = data.path === '/' ? '/' + d : data.path + '/' + d;
-      return '<div class="folder-item" onclick="navigateToFolder(\'' + escapeAttr(fullPath) + '\')">' +
-        '&#128193; ' + escapeHtml(d) + '</div>';
-    }).join('');
+      var item = document.createElement('div');
+      item.className = 'folder-item';
+      item.dataset.path = fullPath;
+      item.innerHTML = '&#128193; ';
+      item.appendChild(document.createTextNode(d));
+      listEl.appendChild(item);
+    });
   }
 
   // Update select button state
@@ -122,15 +147,13 @@ function selectFolder() {
   document.getElementById('folder-browser').style.display = 'none';
 }
 
-function escapeHtml(str) {
-  var div = document.createElement('div');
-  div.appendChild(document.createTextNode(str));
-  return div.innerHTML;
-}
-
-function escapeAttr(str) {
-  return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-}
+// Event delegation for folder browser clicks (breadcrumb + directory list)
+document.addEventListener('click', function(e) {
+  var target = e.target.closest('[data-path]');
+  if (!target) return;
+  var container = target.closest('#folder-breadcrumb, #folder-list');
+  if (container) navigateToFolder(target.dataset.path);
+});
 
 // Shared locale-aware number parsing/formatting helpers for forms.
 window.TDNumber = (function() {

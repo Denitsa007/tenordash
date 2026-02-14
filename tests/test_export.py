@@ -28,7 +28,14 @@ class ExportTests(unittest.TestCase):
         self.addCleanup(setattr, export, "EXPORT_PATH", self._orig_export_path)
         self.addCleanup(setattr, export, "EXPORT_FILE", self._orig_export_file)
 
-        self.export_file = export.EXPORT_FILE
+        # Also seed the DB setting so _resolve_export_path() uses temp dir
+        conn = db.get_db()
+        try:
+            db.set_setting(conn, "export_path", export_dir)
+        finally:
+            conn.close()
+
+        self.export_file = os.path.join(export_dir, "tenordash.xlsx")
 
     def _seed_data(self):
         """Insert a bank, credit line, and advance for testing."""

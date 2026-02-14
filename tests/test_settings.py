@@ -104,6 +104,21 @@ class SettingsApiTests(unittest.TestCase):
         res = self.client.put("/api/settings", json={"export_path": "relative/path"})
         self.assertEqual(res.status_code, 400)
 
+    def test_unknown_key_rejected(self):
+        res = self.client.put("/api/settings", json={"unknown_key": "value"})
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("Unknown setting", res.get_json()["error"])
+
+    def test_unknown_key_mixed_with_valid_rejected(self):
+        """If any unknown key is present, the entire request is rejected."""
+        export_dir = os.path.join(self.tmpdir.name, "exports2")
+        os.makedirs(export_dir)
+        res = self.client.put("/api/settings", json={
+            "export_path": export_dir,
+            "bad_key": "value",
+        })
+        self.assertEqual(res.status_code, 400)
+
 
 if __name__ == "__main__":
     unittest.main()
