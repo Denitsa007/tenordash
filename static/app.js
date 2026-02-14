@@ -30,8 +30,104 @@ async function openSettingsModal() {
     // Use defaults if fetch fails
   }
 
+  document.getElementById('folder-browser').style.display = 'none';
   document.getElementById('settings-modal').classList.add('show');
 }
+
+// ── Folder Browser ──
+
+let currentBrowsePath = '';
+
+async function openFolderBrowser() {
+  const current = document.getElementById('settings-export-path').value;
+  await navigateToFolder(current || '~');
+  document.getElementById('folder-browser').style.display = 'block';
+}
+
+async function navigateToFolder(path) {
+  const statusEl = document.getElementById('folder-status');
+  const selectBtn = document.getElementById('folder-select-btn');
+
+  const res = await fetch('/api/browse-dirs?path=' + encodeURIComponent(path));
+  const data = await res.json();
+  if (data.error) {
+    statusEl.textContent = data.error;
+    selectBtn.disabled = true;
+    return;
+  }
+
+  currentBrowsePath = data.path;
+
+  // Build breadcrumb with DOM construction
+  const bcEl = document.getElementById('folder-breadcrumb');
+  bcEl.textContent = '';
+  const parts = data.path.split('/').filter(Boolean);
+
+  const rootLink = document.createElement('a');
+  rootLink.textContent = '/';
+  rootLink.dataset.path = '/';
+  bcEl.appendChild(rootLink);
+
+  let cumulative = '';
+  parts.forEach(function(p, i) {
+    cumulative += '/' + p;
+    if (i === parts.length - 1) {
+      const span = document.createElement('span');
+      span.textContent = p;
+      bcEl.appendChild(span);
+    } else {
+      const a = document.createElement('a');
+      a.textContent = p;
+      a.dataset.path = cumulative;
+      bcEl.appendChild(a);
+
+      const sep = document.createElement('span');
+      sep.textContent = '/';
+      bcEl.appendChild(sep);
+    }
+  });
+
+  // Build directory list with DOM construction
+  const listEl = document.getElementById('folder-list');
+  listEl.textContent = '';
+  if (data.dirs.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'folder-item';
+    empty.style.color = 'var(--text-light)';
+    empty.textContent = 'No subdirectories';
+    listEl.appendChild(empty);
+  } else {
+    data.dirs.forEach(function(d) {
+      const item = document.createElement('div');
+      item.className = 'folder-item';
+      item.dataset.path = (data.path === '/' ? '/' : data.path + '/') + d;
+      item.textContent = '\uD83D\uDCC1 ' + d;
+      listEl.appendChild(item);
+    });
+  }
+
+  // Update select button state
+  if (data.writable) {
+    selectBtn.disabled = false;
+    statusEl.textContent = '';
+  } else {
+    selectBtn.disabled = true;
+    statusEl.textContent = 'This directory is not writable';
+  }
+}
+
+function selectFolder() {
+  document.getElementById('settings-export-path').value = currentBrowsePath;
+  document.getElementById('folder-browser').style.display = 'none';
+}
+
+// Event delegation for folder browser clicks (breadcrumb + directory list)
+document.addEventListener('click', function(e) {
+  const target = e.target.closest('[data-path]');
+  if (!target) return;
+  const container = target.closest('#folder-breadcrumb, #folder-list');
+  if (container) navigateToFolder(target.dataset.path);
+});
 
 function closeSettingsModal() {
   document.getElementById('settings-modal').classList.remove('show');

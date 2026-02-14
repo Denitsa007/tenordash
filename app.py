@@ -489,6 +489,37 @@ def update_setting():
     return jsonify({"ok": True})
 
 
+@app.route("/api/browse-dirs")
+def browse_dirs():
+    """List subdirectories at a given path for the folder browser UI.
+
+    Security note: this endpoint exposes the server's directory structure.
+    It is safe for local-only use (localhost). If the app is ever exposed
+    to a network, add authentication or restrict the browsable root.
+    """
+    path = request.args.get("path", os.path.expanduser("~"))
+    path = os.path.expanduser(path)
+    if not os.path.isabs(path):
+        return jsonify({"error": "Path must be absolute"}), 400
+    if not os.path.isdir(path):
+        return jsonify({"error": "Not a directory"}), 400
+
+    try:
+        entries = sorted(
+            e.name for e in os.scandir(path)
+            if e.is_dir() and not e.name.startswith(".")
+        )
+    except PermissionError:
+        entries = []
+
+    writable = os.access(path, os.W_OK)
+    return jsonify({
+        "path": path,
+        "dirs": entries,
+        "writable": writable,
+    })
+
+
 # ── Template Helpers ──
 
 @app.template_filter("amount")
