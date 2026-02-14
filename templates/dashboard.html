@@ -96,19 +96,75 @@
     </div>
 
     {% if alerts %}
-    <div class="alert-box">
+    <div class="continuations-widget">
       <div class="alert-title">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="#A62152"><path d="M7 0a7 7 0 100 14A7 7 0 007 0zm0 3a1 1 0 011 1v3a1 1 0 01-2 0V4a1 1 0 011-1zm0 7a1 1 0 110 2 1 1 0 010-2z"/></svg>
         Upcoming Continuations
       </div>
-      {% for a in alerts %}
-      <div class="alert-item">
-        <span><strong>{{ a.id }}</strong> &nbsp; {{ a.bank }} &middot; {{ a.currency }} {{ a.amount_original|amount }}</span>
-        <span style="color: #A62152; font-weight: 700;">
-          Due {{ a.continuation_date|date_display }}
-        </span>
+      <div class="continuation-view-switch">
+        <button class="pill active" type="button" data-view="list" onclick="switchContinuationView('list', this)">List</button>
+        <button class="pill" type="button" data-view="timeline" onclick="switchContinuationView('timeline', this)">Timeline</button>
+        <button class="pill" type="button" data-view="calendar" onclick="switchContinuationView('calendar', this)">Calendar</button>
       </div>
-      {% endfor %}
+
+      <!-- Option 1: Date-left list card -->
+      <div class="continuation-view is-active" id="continuation-view-list">
+        {% for a in alerts %}
+        <div class="continuation-row">
+          <div class="continuation-date-chip">
+            <div class="day-mon">
+              <div class="day">{{ a.cont_day }}</div>
+              <div class="mon">{{ a.cont_mon }}</div>
+            </div>
+            <div class="dow">{{ a.cont_weekday }}</div>
+          </div>
+          <div class="continuation-main">
+            <div class="id-line"><strong>{{ a.id }}</strong> &middot; {{ a.bank }}</div>
+            <div class="meta">{{ a.currency }} {{ a.amount_original|amount }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Option 2: Timeline -->
+      <div class="continuation-view" id="continuation-view-timeline">
+        {% for a in alerts %}
+        <div class="continuation-timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content">
+            <div class="timeline-title"><strong>{{ a.id }}</strong> · {{ a.bank }}</div>
+            <div class="timeline-sub">{{ a.continuation_date|date_display }} · {{ a.currency }} {{ a.amount_original|amount }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Option 3: Calendar + compact list -->
+      <div class="continuation-view" id="continuation-view-calendar">
+        <div class="mini-calendar">
+          <div class="mini-cal-header">
+            <strong>{{ continuation_calendar.month_label }}</strong>
+          </div>
+          <div class="mini-cal-grid mini-cal-weekdays">
+            <div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div><div>Su</div>
+          </div>
+          <div class="mini-cal-grid mini-cal-days">
+            {% for cell in continuation_calendar.cells %}
+            <div class="mini-cal-day {{ 'marked' if cell.marked }} {{ 'today' if cell.today }}">
+              {{ cell.day }}
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="calendar-legend">Accent markers = continuation dates</div>
+        <div class="calendar-list">
+          {% for a in alerts %}
+          <div class="calendar-list-item">
+            <strong>{{ a.cont_day }} {{ a.cont_mon }}</strong> · {{ a.id }} · {{ a.bank }}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
     </div>
     {% endif %}
 
@@ -225,6 +281,14 @@ function filterDash(filter, pill) {
       row.style.display = row.dataset.currency === filter ? '' : 'none';
     }
   });
+}
+
+function switchContinuationView(view, btn) {
+  document.querySelectorAll('.continuation-view-switch .pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.continuation-view').forEach(v => v.classList.remove('is-active'));
+  const target = document.getElementById('continuation-view-' + view);
+  if (target) target.classList.add('is-active');
 }
 </script>
 {% endblock %}
