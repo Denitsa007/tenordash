@@ -24,14 +24,28 @@ CREDIT_LINE_COLUMNS = [
 ]
 
 
-def export_xlsx():
-    """Export fixed_advances and credit_lines to an xlsx file for Power BI."""
+def export_xlsx(export_path=None):
+    """Export fixed_advances and credit_lines to an xlsx file for Power BI.
+
+    Args:
+        export_path: Optional directory override. If None, reads from DB settings
+                     then falls back to config.EXPORT_PATH.
+    """
     conn = db.get_db()
     try:
+        if export_path is None:
+            try:
+                row = conn.execute("SELECT value FROM settings WHERE key = 'export_path'").fetchone()
+                export_path = row[0] if row and row[0] else EXPORT_PATH
+            except Exception:
+                export_path = EXPORT_PATH
         advances = conn.execute("SELECT * FROM fixed_advances ORDER BY id").fetchall()
         credit_lines = conn.execute("SELECT * FROM credit_lines ORDER BY id").fetchall()
     finally:
         conn.close()
+
+    export_dir = export_path
+    export_file = os.path.join(export_dir, "tenordash.xlsx")
 
     wb = Workbook()
 
@@ -65,12 +79,12 @@ def export_xlsx():
         ws_cl.append([d.get(col) for col in CREDIT_LINE_COLUMNS])
 
     # Atomic write: write to temp file then rename
-    os.makedirs(EXPORT_PATH, exist_ok=True)
-    fd, tmp_path = tempfile.mkstemp(suffix=".xlsx", dir=EXPORT_PATH)
+    os.makedirs(export_dir, exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(suffix=".xlsx", dir=export_dir)
     os.close(fd)
     try:
         wb.save(tmp_path)
-        os.replace(tmp_path, EXPORT_FILE)
+        os.replace(tmp_path, export_file)
     except Exception:
         # Clean up temp file on failure
         try:
