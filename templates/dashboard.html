@@ -95,7 +95,7 @@
       <div class="card-sub">within next 7 days</div>
     </div>
 
-    {% if alerts %}
+    {% if alerts or upcoming %}
     <div class="continuations-widget">
       <div class="alert-title">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="#A62152"><path d="M7 0a7 7 0 100 14A7 7 0 007 0zm0 3a1 1 0 011 1v3a1 1 0 01-2 0V4a1 1 0 011-1zm0 7a1 1 0 110 2 1 1 0 010-2z"/></svg>
@@ -103,13 +103,12 @@
       </div>
       <div class="continuation-view-switch">
         <button class="pill active" type="button" data-view="list" onclick="switchContinuationView('list', this)">List</button>
-        <button class="pill" type="button" data-view="timeline" onclick="switchContinuationView('timeline', this)">Timeline</button>
         <button class="pill" type="button" data-view="calendar" onclick="switchContinuationView('calendar', this)">Calendar</button>
       </div>
 
-      <!-- Option 1: Date-left list card -->
+      <!-- Timeline: Date-left list card -->
       <div class="continuation-view is-active" id="continuation-view-list">
-        {% for a in alerts %}
+        {% for a in upcoming %}
         <div class="continuation-row">
           <div class="continuation-date-chip">
             <div class="day-mon">
@@ -126,20 +125,7 @@
         {% endfor %}
       </div>
 
-      <!-- Option 2: Timeline -->
-      <div class="continuation-view" id="continuation-view-timeline">
-        {% for a in alerts %}
-        <div class="continuation-timeline-item">
-          <div class="timeline-dot"></div>
-          <div class="timeline-content">
-            <div class="timeline-title"><strong>{{ a.id }}</strong> · {{ a.bank }}</div>
-            <div class="timeline-sub">{{ a.continuation_date|date_display }} · {{ a.currency }} {{ a.amount_original|amount }}</div>
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-
-      <!-- Option 3: Calendar + compact list -->
+      <!-- Calendar + compact list -->
       <div class="continuation-view" id="continuation-view-calendar">
         {% if continuation_calendar is defined %}
         <div class="mini-calendar">
@@ -155,7 +141,8 @@
           </div>
           <div class="mini-cal-grid mini-cal-days" id="cal-days-grid">
             {% for cell in continuation_calendar.cells %}
-            <div class="mini-cal-day {{ 'marked' if cell.marked }} {{ 'today' if cell.today }}">
+            <div class="mini-cal-day {{ 'marked' if cell.marked }} {{ 'today' if cell.today }}"
+              {%- if cell.marked and tooltip_map.get(cell.date) %} data-tooltip="{{ tooltip_map[cell.date] }}"{% endif %}>
               {{ cell.day }}
             </div>
             {% endfor %}
@@ -163,8 +150,8 @@
         </div>
         <div class="calendar-legend">Accent markers = continuation dates</div>
         {% endif %}
-        <div class="calendar-list" id="cal-list">
-          {% for a in alerts %}
+        <div class="calendar-list" id="cal-list" data-cont-limit="{{ cont_limit or 0 }}">
+          {% for a in upcoming %}
           <div class="calendar-list-item">
             <strong>{{ a.cont_day }} {{ a.cont_mon }}</strong> · {{ a.id }} · {{ a.bank }} · {{ a.currency }} {{ a.amount_original|amount }}
           </div>
@@ -405,6 +392,12 @@ function switchContinuationView(view, btn) {
 
 // ── Calendar month navigation ──
 
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
 async function navigateCalendar(delta) {
   const label = document.getElementById('cal-month-label');
   if (!label) return;
@@ -425,22 +418,32 @@ async function navigateCalendar(delta) {
   label.dataset.year = cal.year;
   label.dataset.month = cal.month;
 
+  // Build tooltip map from items
+  const tooltipMap = {};
+  data.items.forEach(function(it) {
+    if (!tooltipMap[it.date]) tooltipMap[it.date] = [];
+    tooltipMap[it.date].push(esc(it.id) + ' \u00b7 ' + esc(it.bank) + ' \u00b7 ' + esc(it.currency) + ' ' + esc(it.amount));
+  });
+
   // Rebuild day grid
   const grid = document.getElementById('cal-days-grid');
   grid.innerHTML = cal.cells.map(function(c) {
     const cls = ['mini-cal-day'];
     if (c.marked) cls.push('marked');
     if (c.today) cls.push('today');
-    return '<div class="' + cls.join(' ') + '">' + (c.day || '') + '</div>';
+    const tip = c.marked && tooltipMap[c.date] ? ' data-tooltip="' + tooltipMap[c.date].join('\n').replace(/"/g, '&quot;') + '"' : '';
+    return '<div class="' + cls.join(' ') + '"' + tip + '>' + (c.day || '') + '</div>';
   }).join('');
 
-  // Rebuild list
+  // Rebuild list (respect display limit)
   const list = document.getElementById('cal-list');
-  if (data.items.length === 0) {
+  const limitAttr = parseInt(list.dataset.contLimit, 10);
+  const displayItems = limitAttr > 0 ? data.items.slice(0, limitAttr) : data.items;
+  if (displayItems.length === 0) {
     list.innerHTML = '<div class="calendar-list-item" style="color:var(--text-muted)">No continuations this month</div>';
   } else {
-    list.innerHTML = data.items.map(function(it) {
-      return '<div class="calendar-list-item"><strong>' + it.day + ' ' + it.mon + '</strong> · ' + it.id + ' · ' + it.bank + ' · ' + it.currency + ' ' + it.amount + '</div>';
+    list.innerHTML = displayItems.map(function(it) {
+      return '<div class="calendar-list-item"><strong>' + esc(it.day + ' ' + it.mon) + '</strong> · ' + esc(it.id) + ' · ' + esc(it.bank) + ' · ' + esc(it.currency) + ' ' + esc(it.amount) + '</div>';
     }).join('');
   }
 }
