@@ -54,6 +54,9 @@
   </nav>
 
   <main class="main">
+    <button class="settings-btn" onclick="openSettingsModal()" title="Settings">
+      <svg width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path d="M11.078 0l.762 2.845a7.972 7.972 0 011.897 1.098L16.58 3.18l1.078 1.868-2.003 2.07a7.98 7.98 0 010 2.193l2.003 2.07-1.078 1.868-2.843-.764a7.972 7.972 0 01-1.897 1.098L11.078 16.5H8.922l-.762-2.845a7.972 7.972 0 01-1.897-1.098L3.42 13.32l-1.078-1.868 2.003-2.07a7.98 7.98 0 010-2.193l-2.003-2.07L3.42 3.25l2.843.764a7.972 7.972 0 011.897-1.098L8.922 0h2.156zM10 6.5a1.75 1.75 0 100 3.5 1.75 1.75 0 000-3.5z"/></svg>
+    </button>
     {% block content %}{% endblock %}
   </main>
 
@@ -76,6 +79,39 @@
           <button type="submit" class="btn-primary" id="currency-submit-btn">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 7 5.5 10.5 12 4"/></svg>
             Add
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settings-modal">
+    <div class="modal-box" style="width: 420px;">
+      <h3>
+        Settings
+        <button class="panel-close" onclick="closeSettingsModal()">&times;</button>
+      </h3>
+      <form id="settings-form" onsubmit="saveSettings(event)">
+        <div class="form-group">
+          <label>Display Unit</label>
+          <select id="settings-display-unit">
+            <option value="full">Full (80,000,000)</option>
+            <option value="thousands">Thousands (80,000K)</option>
+            <option value="millions">Millions (80M)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Export Path</label>
+          <input type="text" id="settings-export-path" placeholder="/path/to/export/folder" />
+          <div class="form-hint" style="color: var(--text-light);">Absolute path to the directory where .xlsx exports are saved</div>
+        </div>
+        <div class="currency-msg" id="settings-msg" style="display:none"></div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" onclick="closeSettingsModal()">Cancel</button>
+          <button type="submit" class="btn-primary" id="settings-submit-btn">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 7 5.5 10.5 12 4"/></svg>
+            Save
           </button>
         </div>
       </form>
@@ -137,12 +173,15 @@
     }
   }
 
-  // Close modal on overlay click or Escape
+  // Close modals on overlay click or Escape
   document.getElementById('currency-modal').addEventListener('click', function(e) {
     if (e.target === this) closeCurrencyModal();
   });
+  document.getElementById('settings-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeSettingsModal();
+  });
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeCurrencyModal();
+    if (e.key === 'Escape') { closeCurrencyModal(); closeSettingsModal(); }
   });
   </script>
   {% block scripts %}{% endblock %}

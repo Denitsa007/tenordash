@@ -1,5 +1,5 @@
 import sqlite3
-from config import DB_PATH, BASE_CURRENCY
+from config import DB_PATH, BASE_CURRENCY, EXPORT_PATH
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS banks (
@@ -39,6 +39,11 @@ CREATE TABLE IF NOT EXISTS fixed_advances (
     interest_amount REAL NOT NULL CHECK(interest_amount >= 0),
     FOREIGN KEY (credit_line_id) REFERENCES credit_lines(id)
 );
+
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 """
 
 # 12-color palette for auto-assigning to new currencies
@@ -74,15 +79,32 @@ def get_db():
     return conn
 
 
+DEFAULT_SETTINGS = {
+    "display_unit": "millions",
+    "export_path": EXPORT_PATH,
+}
+
+
 def init_db():
     conn = get_db()
     conn.executescript(SCHEMA)
     _seed_currencies(conn)
+    _seed_settings(conn)
     _migrate_add_czk_pln(conn)
     _migrate_remove_currency_check(conn)
     _migrate_add_archived_column(conn)
     conn.commit()
     conn.close()
+
+
+def _seed_settings(conn):
+    """Insert default settings if table is empty."""
+    count = conn.execute("SELECT COUNT(*) FROM settings").fetchone()[0]
+    if count == 0:
+        conn.executemany(
+            "INSERT INTO settings (key, value) VALUES (?, ?)",
+            list(DEFAULT_SETTINGS.items()),
+        )
 
 
 def _migrate_add_czk_pln(conn):
@@ -420,6 +442,28 @@ def get_cl_drawn(conn, cl_id, exclude_fv_id=None):
             (cl_id,),
         ).fetchone()
     return dict(row) if row else None
+
+
+def get_setting(conn, key, default=None):
+    """Return a single setting value, or default if not found."""
+    row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    return row[0] if row else default
+
+
+def set_setting(conn, key, value):
+    """Upsert a setting."""
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES (?, ?) "
+        "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (key, value),
+    )
+    conn.commit()
+
+
+def get_all_settings(conn):
+    """Return all settings as a {key: value} dict."""
+    rows = conn.execute("SELECT key, value FROM settings").fetchall()
+    return {r[0]: r[1] for r in rows}
 
 
 def get_cl_utilization(conn):
