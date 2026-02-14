@@ -82,6 +82,7 @@ def get_db():
 DEFAULT_SETTINGS = {
     "display_unit": "millions",
     "export_path": EXPORT_PATH,
+    "continuation_limit": "5",
 }
 
 
@@ -98,12 +99,11 @@ def init_db():
 
 
 def _seed_settings(conn):
-    """Insert default settings if table is empty."""
-    count = conn.execute("SELECT COUNT(*) FROM settings").fetchone()[0]
-    if count == 0:
-        conn.executemany(
-            "INSERT INTO settings (key, value) VALUES (?, ?)",
-            list(DEFAULT_SETTINGS.items()),
+    """Insert any missing default settings without overwriting existing ones."""
+    for key, value in DEFAULT_SETTINGS.items():
+        conn.execute(
+            "INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)",
+            (key, value),
         )
 
 
@@ -406,6 +406,22 @@ def get_active_totals(conn):
         "WHERE start_date <= date('now') AND end_date > date('now') "
         "GROUP BY currency"
     ).fetchall()
+
+
+def get_upcoming_continuations(conn, limit=None):
+    """Return the next active advances by continuation_date, with optional limit."""
+    sql = (
+        "SELECT fa.*, cl.description as cl_description "
+        "FROM fixed_advances fa "
+        "LEFT JOIN credit_lines cl ON fa.credit_line_id = cl.id "
+        "WHERE fa.start_date <= date('now') AND fa.end_date > date('now') "
+        "AND fa.continuation_date >= date('now') "
+        "ORDER BY fa.continuation_date ASC"
+    )
+    if limit is not None:
+        sql += " LIMIT ?"
+        return conn.execute(sql, (limit,)).fetchall()
+    return conn.execute(sql).fetchall()
 
 
 def get_continuation_alerts(conn, days=7):
