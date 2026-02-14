@@ -42,13 +42,18 @@ def export_xlsx():
 
     for row in advances:
         d = dict(row)
-        days = calc_days(d["start_date"], d["end_date"])
-        rate_pa = calc_interest_rate_pa(d["interest_amount"], d["amount_original"], days)
+        try:
+            days = calc_days(d["start_date"], d["end_date"])
+            rate_pa = calc_interest_rate_pa(d["interest_amount"], d["amount_original"], days)
+        except (ValueError, TypeError, KeyError):
+            logger.warning("Skipping advance %s: bad date or amount data", d.get("id"))
+            days = None
+            rate_pa = None
         ws_fv.append([
             d["id"], d["bank"], d["credit_line_id"], d["currency"],
             d["amount_original"], d["start_date"], d["end_date"],
             d["continuation_date"], d["interest_amount"], days,
-            round(rate_pa, 6),
+            round(rate_pa, 6) if rate_pa is not None else None,
         ])
 
     # Sheet 2: tblCreditLines
