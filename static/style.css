@@ -22,6 +22,10 @@
   --usd: #b45309;
   --alert: #A62152;
   --accent: #A62152;
+  --berry-bg-soft: #fdf2f6;
+  --berry-border: #f0d0dd;
+  --berry-dark: #6b1a3a;
+  --berry-muted: #925469;
 }
 
 body {
@@ -310,6 +314,196 @@ body {
   justify-content: space-between;
 }
 .alert-item + .alert-item { border-top: 1px solid #f0d0dd; }
+
+/* ── Continuations Redesign Options ── */
+
+.continuations-widget {
+  background: var(--berry-bg-soft);
+  border: 1px solid var(--berry-border);
+  border-radius: 6px;
+  padding: 14px 14px 12px;
+  margin-bottom: 20px;
+}
+
+.continuation-view-switch {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.continuation-view-switch .pill {
+  padding: 3px 10px;
+  font-size: 10px;
+}
+
+.continuation-view {
+  display: none;
+}
+
+.continuation-view.is-active {
+  display: block;
+}
+
+/* Option 1: Date-left list */
+.continuation-row {
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.continuation-row + .continuation-row {
+  border-top: 1px solid var(--berry-border);
+}
+
+.continuation-date-chip {
+  border-radius: 5px;
+  background: #fff;
+  border: 1px solid var(--berry-border);
+  text-align: center;
+  line-height: 1;
+  padding: 5px 2px 6px;
+}
+
+.continuation-date-chip .day-mon {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.continuation-date-chip .day {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--berry-dark);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.continuation-date-chip .mon {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--berry);
+  letter-spacing: 0.04em;
+}
+
+.continuation-date-chip .dow {
+  margin-top: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--berry-muted);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.continuation-main .id-line {
+  font-size: 12px;
+  color: var(--berry-dark);
+}
+
+.continuation-main .meta {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--berry-muted);
+}
+
+.continuation-due {
+  font-size: 10px;
+  color: var(--berry);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* Option 2: Timeline */
+.continuation-timeline-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 8px;
+  padding: 7px 0 7px 2px;
+}
+
+.continuation-timeline-item + .continuation-timeline-item {
+  border-top: 1px solid var(--berry-border);
+}
+
+.timeline-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--berry);
+  margin-top: 4px;
+  box-shadow: 0 0 0 3px var(--berry-bg-soft);
+}
+
+.timeline-title {
+  font-size: 12px;
+  color: var(--berry-dark);
+}
+
+.timeline-sub {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--berry-muted);
+}
+
+/* Option 3: Mini calendar */
+.mini-calendar {
+  background: #fff;
+  border: 1px solid var(--berry-border);
+  border-radius: 6px;
+  padding: 8px 10px 10px;
+}
+
+.mini-cal-header {
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--berry-dark);
+}
+
+.mini-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.mini-cal-weekdays div {
+  font-size: 10px;
+  text-align: center;
+  color: var(--berry-muted);
+}
+
+.mini-cal-day {
+  min-height: 22px;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 11px;
+  line-height: 22px;
+  color: var(--berry-dark);
+}
+
+.mini-cal-day.marked {
+  background: var(--berry);
+  color: #fff;
+  font-weight: 700;
+}
+
+.mini-cal-day.today {
+  outline: 1px dashed var(--berry);
+  outline-offset: -2px;
+}
+
+.calendar-legend {
+  margin: 8px 0 6px;
+  font-size: 10px;
+  color: var(--berry-muted);
+}
+
+.calendar-list-item {
+  font-size: 11px;
+  color: var(--berry-dark);
+  padding: 3px 0;
+}
 
 /* ── Section / Table ── */
 
