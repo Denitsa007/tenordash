@@ -132,10 +132,6 @@ body {
   margin-bottom: 16px;
 }
 
-.dashboard-sidebar .ecb-footer {
-  text-align: left;
-}
-
 .dashboard-main .cards {
   margin-bottom: 16px;
 }
@@ -911,6 +907,20 @@ tr[data-archived="true"]:hover td { opacity: 0.75; }
   font-size: 11px;
   color: var(--text-light);
   margin-top: 8px;
+}
+
+.sidebar-ecb {
+  padding: 10px 20px 10px 23px;
+  color: #8a7070;
+  text-align: left;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.sidebar-ecb .ecb-source {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #5a4e4e;
 }
 
 /* ── Folder Browser ── */
