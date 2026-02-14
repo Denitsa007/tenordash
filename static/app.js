@@ -36,62 +36,69 @@ async function openSettingsModal() {
 
 // ── Folder Browser ──
 
-var currentBrowsePath = '';
+let currentBrowsePath = '';
 
 async function openFolderBrowser() {
-  var current = document.getElementById('settings-export-path').value;
+  const current = document.getElementById('settings-export-path').value;
   await navigateToFolder(current || '~');
   document.getElementById('folder-browser').style.display = 'block';
 }
 
 async function navigateToFolder(path) {
-  var res = await fetch('/api/browse-dirs?path=' + encodeURIComponent(path));
-  var data = await res.json();
-  if (data.error) return;
+  const statusEl = document.getElementById('folder-status');
+  const selectBtn = document.getElementById('folder-select-btn');
+
+  const res = await fetch('/api/browse-dirs?path=' + encodeURIComponent(path));
+  const data = await res.json();
+  if (data.error) {
+    statusEl.textContent = data.error;
+    selectBtn.disabled = true;
+    return;
+  }
 
   currentBrowsePath = data.path;
 
   // Build breadcrumb with DOM construction
-  var bcEl = document.getElementById('folder-breadcrumb');
+  const bcEl = document.getElementById('folder-breadcrumb');
   bcEl.textContent = '';
-  var parts = data.path.split('/').filter(Boolean);
+  const parts = data.path.split('/').filter(Boolean);
 
-  var rootLink = document.createElement('a');
+  const rootLink = document.createElement('a');
   rootLink.textContent = '/';
   rootLink.dataset.path = '/';
   bcEl.appendChild(rootLink);
 
-  var cumulative = '';
+  let cumulative = '';
   parts.forEach(function(p, i) {
     cumulative += '/' + p;
     if (i === parts.length - 1) {
-      var span = document.createElement('span');
+      const span = document.createElement('span');
       span.textContent = p;
       bcEl.appendChild(span);
     } else {
-      var a = document.createElement('a');
+      const a = document.createElement('a');
       a.textContent = p;
       a.dataset.path = cumulative;
       bcEl.appendChild(a);
 
-      var sep = document.createElement('span');
+      const sep = document.createElement('span');
       sep.textContent = '/';
       bcEl.appendChild(sep);
     }
   });
 
   // Build directory list with DOM construction
-  var listEl = document.getElementById('folder-list');
+  const listEl = document.getElementById('folder-list');
   listEl.textContent = '';
   if (data.dirs.length === 0) {
-    var empty = document.createElement('div');
+    const empty = document.createElement('div');
     empty.className = 'folder-item';
     empty.style.color = 'var(--text-light)';
     empty.textContent = 'No subdirectories';
     listEl.appendChild(empty);
   } else {
     data.dirs.forEach(function(d) {
-      var item = document.createElement('div');
+      const item = document.createElement('div');
       item.className = 'folder-item';
       item.dataset.path = (data.path === '/' ? '/' : data.path + '/') + d;
       item.textContent = '\uD83D\uDCC1 ' + d;
@@ -100,8 +107,6 @@ async function navigateToFolder(path) {
   }
 
   // Update select button state
-  var selectBtn = document.getElementById('folder-select-btn');
-  var statusEl = document.getElementById('folder-status');
   if (data.writable) {
     selectBtn.disabled = false;
     statusEl.textContent = '';
@@ -118,9 +123,9 @@ function selectFolder() {
 
 // Event delegation for folder browser clicks (breadcrumb + directory list)
 document.addEventListener('click', function(e) {
-  var target = e.target.closest('[data-path]');
+  const target = e.target.closest('[data-path]');
   if (!target) return;
-  var container = target.closest('#folder-breadcrumb, #folder-list');
+  const container = target.closest('#folder-breadcrumb, #folder-list');
   if (container) navigateToFolder(target.dataset.path);
 });
 
