@@ -421,6 +421,24 @@ def get_continuation_alerts(conn, days=7):
     ).fetchall()
 
 
+def get_continuations_for_month(conn, year, month):
+    """Return active advances with continuation_date in the given month."""
+    month_start = f"{year:04d}-{month:02d}-01"
+    if month == 12:
+        month_end = f"{year + 1:04d}-01-01"
+    else:
+        month_end = f"{year:04d}-{month + 1:02d}-01"
+    return conn.execute(
+        "SELECT fa.*, cl.description as cl_description "
+        "FROM fixed_advances fa "
+        "LEFT JOIN credit_lines cl ON fa.credit_line_id = cl.id "
+        "WHERE fa.start_date <= date('now') AND fa.end_date > date('now') "
+        "AND fa.continuation_date >= ? AND fa.continuation_date < ? "
+        "ORDER BY fa.continuation_date ASC",
+        (month_start, month_end),
+    ).fetchall()
+
+
 def get_cl_drawn(conn, cl_id, exclude_fv_id=None):
     if exclude_fv_id:
         row = conn.execute(

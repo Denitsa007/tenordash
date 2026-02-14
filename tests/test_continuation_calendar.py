@@ -110,6 +110,68 @@ class ContinuationCalendarTests(unittest.TestCase):
                 f"Month {month} cells not a multiple of 7"
             )
 
+    # ── New: explicit year/month parameter tests ──
+
+    @patch("app.date")
+    def test_explicit_month_overrides_today(self, mock_date):
+        """Passing year/month builds that month, not today's."""
+        mock_date.today.return_value = date(2026, 3, 15)
+        mock_date.side_effect = lambda *a, **kw: date(*a, **kw)
+
+        result = build_continuation_calendar([], year=2026, month=7)
+
+        self.assertEqual(result["month_label"], "July 2026")
+        self.assertEqual(result["year"], 2026)
+        self.assertEqual(result["month"], 7)
+        day_cells = [c for c in result["cells"] if c["day"] != ""]
+        self.assertEqual(len(day_cells), 31)
+
+    @patch("app.date")
+    def test_today_not_flagged_on_other_month(self, mock_date):
+        """Today indicator should not appear when viewing a different month."""
+        mock_date.today.return_value = date(2026, 3, 15)
+        mock_date.side_effect = lambda *a, **kw: date(*a, **kw)
+
+        result = build_continuation_calendar([], year=2026, month=4)
+
+        today_cells = [c for c in result["cells"] if c["today"]]
+        self.assertEqual(len(today_cells), 0)
+
+    @patch("app.date")
+    def test_today_flagged_on_current_month_explicit(self, mock_date):
+        """Today indicator appears when explicitly requesting current month."""
+        mock_date.today.return_value = date(2026, 3, 15)
+        mock_date.side_effect = lambda *a, **kw: date(*a, **kw)
+
+        result = build_continuation_calendar([], year=2026, month=3)
+
+        today_cells = [c for c in result["cells"] if c["today"]]
+        self.assertEqual(len(today_cells), 1)
+        self.assertEqual(today_cells[0]["day"], 15)
+
+    @patch("app.date")
+    def test_return_includes_year_and_month(self, mock_date):
+        """Return dict includes year and month keys."""
+        mock_date.today.return_value = date(2026, 5, 1)
+        mock_date.side_effect = lambda *a, **kw: date(*a, **kw)
+
+        result = build_continuation_calendar([])
+
+        self.assertEqual(result["year"], 2026)
+        self.assertEqual(result["month"], 5)
+
+    @patch("app.date")
+    def test_december_explicit(self, mock_date):
+        """December with explicit params calculates correctly."""
+        mock_date.today.return_value = date(2026, 6, 1)
+        mock_date.side_effect = lambda *a, **kw: date(*a, **kw)
+
+        result = build_continuation_calendar([], year=2026, month=12)
+
+        self.assertEqual(result["month_label"], "December 2026")
+        day_cells = [c for c in result["cells"] if c["day"] != ""]
+        self.assertEqual(len(day_cells), 31)
+
 
 if __name__ == "__main__":
     unittest.main()
