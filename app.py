@@ -113,7 +113,14 @@ def inject_globals():
     with db_conn() as conn:
         currencies = [dict(r) for r in db.get_currencies(conn)]
         g.settings = db.get_all_settings(conn)
-        return {"currencies": currencies, "BASE_CURRENCY": BASE_CURRENCY, "settings": g.settings}
+        fx_rates, ecb_date = ecb.get_fx_rates(currencies)
+        return {
+            "currencies": currencies,
+            "BASE_CURRENCY": BASE_CURRENCY,
+            "settings": g.settings,
+            "fx_rates": fx_rates,
+            "ecb_date": ecb_date,
+        }
 
 
 # ── Dashboard ──
@@ -155,9 +162,6 @@ def dashboard():
 
         utilization = [dict(r) for r in db.get_cl_utilization(conn)]
 
-        currencies = [dict(r) for r in db.get_currencies(conn)]
-        fx_rates, rate_date = ecb.get_fx_rates(currencies)
-
         return render_template(
             "dashboard.html",
             totals=totals,
@@ -165,8 +169,6 @@ def dashboard():
             upcoming=upcoming,
             active=active,
             utilization=utilization,
-            fx_rates=fx_rates,
-            ecb_date=rate_date,
             continuation_calendar=continuation_calendar,
             tooltip_map=tooltip_map,
             today=date.today().isoformat(),
