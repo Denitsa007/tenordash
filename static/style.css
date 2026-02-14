@@ -946,3 +946,71 @@ tr[data-archived="true"]:hover td { opacity: 0.75; }
 }
 .folder-status { font-size: 11px; color: var(--text-light); }
 .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+/* ── Panel View Mode ── */
+
+.panel-view .detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 12px;
+}
+
+.panel-view .detail-item {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-view .detail-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.panel-view .detail-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.panel-view .detail-value {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.panel-view .detail-value.mono {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+}
+
+.panel-view .detail-value .badge {
+  vertical-align: middle;
+}
+
+.panel-view .detail-calc {
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 14px 16px;
+  margin: 16px 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.panel-view .detail-calc .calc-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.panel-view .detail-calc .calc-value {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Clickable table rows */
+.data-table tbody tr[data-id] { cursor: pointer; }
