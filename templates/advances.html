@@ -156,7 +156,7 @@
       <div class="form-row">
         <div class="form-group">
           <label>Bank</label>
-          <select id="adv-bank" required>
+          <select id="adv-bank" required onchange="syncCLFromBank()">
             <option value="">Select bank...</option>
             {% for bank in banks %}
             <option value="{{ bank.bank_name }}">{{ bank.bank_name }}</option>
@@ -165,10 +165,10 @@
         </div>
         <div class="form-group">
           <label>Credit Line</label>
-          <select id="adv-cl" required onchange="dismissClWarning()">
+          <select id="adv-cl" required onchange="syncBankFromCL(); dismissClWarning()">
             <option value="">Select...</option>
             {% for cl in lines %}
-            <option value="{{ cl.id }}">{{ cl.id }} — {{ cl.description or cl.bank_name }}</option>
+            <option value="{{ cl.id }}" data-bank="{{ cl.bank_name }}">{{ cl.id }} — {{ cl.description or cl.bank_name }}</option>
             {% endfor %}
           </select>
         </div>
@@ -263,6 +263,29 @@ function setAmountField(id, value, allowDecimals) {
   }
 }
 
+function syncCLFromBank() {
+  const bank = document.getElementById('adv-bank').value;
+  const clSelect = document.getElementById('adv-cl');
+  for (const opt of clSelect.options) {
+    if (!opt.value) continue; // always show placeholder
+    opt.hidden = bank && opt.dataset.bank !== bank;
+  }
+  // Reset CL if current selection doesn't match the bank
+  const selected = clSelect.options[clSelect.selectedIndex];
+  if (selected && selected.value && bank && selected.dataset.bank !== bank) {
+    clSelect.value = '';
+  }
+}
+
+function syncBankFromCL() {
+  const clSelect = document.getElementById('adv-cl');
+  const selected = clSelect.options[clSelect.selectedIndex];
+  if (selected && selected.dataset.bank) {
+    document.getElementById('adv-bank').value = selected.dataset.bank;
+  }
+  syncCLFromBank();
+}
+
 function dismissClWarning() {
   clWarningAcknowledged = false;
   document.getElementById('cl-warning').style.display = 'none';
@@ -275,6 +298,7 @@ function openAdvForm() {
   document.getElementById('cont-hint').style.display = 'none';
   document.getElementById('calc-days').textContent = '—';
   document.getElementById('calc-rate').textContent = '—';
+  syncCLFromBank();
   dismissClWarning();
   document.getElementById('adv-panel').classList.add('show');
 }
@@ -323,6 +347,7 @@ async function editAdv(id) {
   document.getElementById('adv-panel-title').textContent = 'Edit ' + id;
   document.getElementById('adv-edit-id').value = id;
   document.getElementById('adv-bank').value = d.bank;
+  syncCLFromBank();
   document.getElementById('adv-cl').value = d.credit_line_id;
   document.getElementById('adv-currency').value = d.currency;
   document.getElementById('adv-start').value = d.start_date;
