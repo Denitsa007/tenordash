@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Lato:wght@400;700&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -25,7 +25,7 @@
 }
 
 body {
-  font-family: 'Lato', sans-serif;
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
@@ -51,7 +51,7 @@ body {
 
 .sidebar-logo {
   padding: 0 20px 24px;
-  font-family: 'Libre Baskerville', serif;
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
   font-size: 16px;
   font-weight: 400;
   color: #fff;
@@ -62,7 +62,7 @@ body {
 
 .sidebar-logo small {
   display: block;
-  font-family: 'Lato', sans-serif;
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
   font-size: 11px;
   font-weight: 400;
   color: #8a7070;
@@ -123,7 +123,7 @@ body {
 }
 
 .topbar h2 {
-  font-family: 'Libre Baskerville', serif;
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
   font-size: 22px;
   font-weight: 400;
   color: var(--text);
@@ -167,7 +167,7 @@ body {
   font-weight: 700;
   border-radius: 4px;
   cursor: pointer;
-  font-family: 'Lato', sans-serif;
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -185,7 +185,7 @@ body {
   font-weight: 400;
   border-radius: 4px;
   cursor: pointer;
-  font-family: 'Lato', sans-serif;
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -203,7 +203,7 @@ body {
   font-weight: 400;
   border-radius: 4px;
   cursor: pointer;
-  font-family: 'Lato', sans-serif;
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
   transition: all 0.15s;
 }
 .btn-danger:hover { background: var(--alert); color: #fff; }
@@ -326,7 +326,7 @@ body {
   cursor: pointer;
   font-weight: 400;
   color: #666;
-  font-family: 'Lato', sans-serif;
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
 }
 .pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
@@ -423,7 +423,7 @@ tr[data-archived="true"]:hover td { opacity: 0.75; }
 @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
 
 .slide-panel h3 {
-  font-family: 'Libre Baskerville', serif;
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
   font-size: 18px;
   font-weight: 400;
   margin-bottom: 24px;
@@ -465,7 +465,7 @@ tr[data-archived="true"]:hover td { opacity: 0.75; }
   border: 1px solid var(--border-medium);
   border-radius: 4px;
   font-size: 13px;
-  font-family: 'Lato', sans-serif;
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
   color: var(--text);
   background: #fff;
   transition: border-color 0.15s;
@@ -628,7 +628,7 @@ tr[data-archived="true"]:hover td { opacity: 0.75; }
 @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
 .modal-box h3 {
-  font-family: 'Libre Baskerville', serif;
+  font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
   font-size: 18px;
   font-weight: 400;
   margin-bottom: 20px;
