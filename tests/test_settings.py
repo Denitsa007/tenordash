@@ -176,6 +176,24 @@ class SettingsApiTests(unittest.TestCase):
         self.assertEqual(res.status_code, 400)
         self.assertIn("non-empty", res.get_json()["error"])
 
+    # ── Continuation Limit ──
+
+    def test_put_valid_continuation_limit(self):
+        for val in ("3", "5", "10", "all"):
+            res = self.client.put("/api/settings", json={"key": "continuation_limit", "value": val})
+            self.assertEqual(res.status_code, 200, f"Expected 200 for value '{val}'")
+            self.assertTrue(res.get_json()["ok"])
+
+    def test_put_invalid_continuation_limit_number(self):
+        res = self.client.put("/api/settings", json={"key": "continuation_limit", "value": "7"})
+        self.assertEqual(res.status_code, 400)
+        self.assertFalse(res.get_json()["ok"])
+
+    def test_put_invalid_continuation_limit_string(self):
+        res = self.client.put("/api/settings", json={"key": "continuation_limit", "value": "abc"})
+        self.assertEqual(res.status_code, 400)
+        self.assertFalse(res.get_json()["ok"])
+
     # ── Browse Dirs ──
 
     def test_browse_dirs_home(self):
