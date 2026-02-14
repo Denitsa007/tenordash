@@ -112,14 +112,16 @@
         {% for a in alerts %}
         <div class="continuation-row">
           <div class="continuation-date-chip">
-            <div class="day">{{ a.cont_day }}</div>
-            <div class="mon">{{ a.cont_mon }}</div>
+            <div class="day-mon">
+              <div class="day">{{ a.cont_day }}</div>
+              <div class="mon">{{ a.cont_mon }}</div>
+            </div>
+            <div class="dow">{{ a.cont_weekday }}</div>
           </div>
           <div class="continuation-main">
             <div class="id-line"><strong>{{ a.id }}</strong> &middot; {{ a.bank }}</div>
             <div class="meta">{{ a.currency }} {{ a.amount_original|amount }}</div>
           </div>
-          <div class="continuation-due">{{ a.cont_weekday }}</div>
         </div>
         {% endfor %}
       </div>

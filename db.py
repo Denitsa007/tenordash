@@ -14,6 +14,11 @@ CREATE TABLE IF NOT EXISTS currencies (
     ecb_available INTEGER NOT NULL DEFAULT 1
 );
 
+CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS credit_lines (
     id TEXT PRIMARY KEY,
     bank_key TEXT NOT NULL,
@@ -420,6 +425,22 @@ def get_cl_drawn(conn, cl_id, exclude_fv_id=None):
             (cl_id,),
         ).fetchone()
     return dict(row) if row else None
+
+
+# ── Settings ──
+
+def get_settings(conn):
+    rows = conn.execute("SELECT key, value FROM settings").fetchall()
+    return {r["key"]: r["value"] for r in rows}
+
+
+def set_setting(conn, key, value):
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES (?, ?) "
+        "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (key, value),
+    )
+    conn.commit()
 
 
 def get_cl_utilization(conn):

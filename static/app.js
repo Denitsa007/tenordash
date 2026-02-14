@@ -14,6 +14,124 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
+// ── Settings Modal ──
+
+async function openSettingsModal() {
+  var msgEl = document.getElementById('settings-msg');
+  msgEl.style.display = 'none';
+  document.getElementById('folder-browser').style.display = 'none';
+  document.getElementById('settings-submit-btn').disabled = false;
+
+  // Load current settings
+  var res = await fetch('/api/settings');
+  var data = await res.json();
+  document.getElementById('settings-export-path').value = data.export_path || '';
+
+  document.getElementById('settings-modal').classList.add('show');
+}
+
+function closeSettingsModal() {
+  document.getElementById('settings-modal').classList.remove('show');
+}
+
+async function saveSettings(e) {
+  e.preventDefault();
+  var msgEl = document.getElementById('settings-msg');
+  var btn = document.getElementById('settings-submit-btn');
+  btn.disabled = true;
+  msgEl.style.display = 'none';
+
+  var exportPath = document.getElementById('settings-export-path').value;
+  var res = await fetch('/api/settings', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({export_path: exportPath})
+  });
+  var data = await res.json();
+  if (data.ok) {
+    msgEl.textContent = 'Settings saved.';
+    msgEl.className = 'settings-msg success';
+    msgEl.style.display = 'block';
+    setTimeout(function() { closeSettingsModal(); }, 800);
+  } else {
+    msgEl.textContent = data.error || 'Failed to save settings';
+    msgEl.className = 'settings-msg error';
+    msgEl.style.display = 'block';
+    btn.disabled = false;
+  }
+}
+
+// ── Folder Browser ──
+
+var currentBrowsePath = '';
+
+async function openFolderBrowser() {
+  var current = document.getElementById('settings-export-path').value;
+  var startPath = current || '~';
+  await navigateToFolder(startPath);
+  document.getElementById('folder-browser').style.display = 'block';
+}
+
+async function navigateToFolder(path) {
+  var res = await fetch('/api/browse-dirs?path=' + encodeURIComponent(path));
+  var data = await res.json();
+  if (data.error) return;
+
+  currentBrowsePath = data.path;
+
+  // Render breadcrumb
+  var parts = data.path.split('/').filter(Boolean);
+  var bc = '<a onclick="navigateToFolder(\'/\')">/</a>';
+  var cumulative = '';
+  parts.forEach(function(p, i) {
+    cumulative += '/' + p;
+    if (i === parts.length - 1) {
+      bc += ' <span>' + escapeHtml(p) + '</span>';
+    } else {
+      bc += ' <a onclick="navigateToFolder(\'' + escapeAttr(cumulative) + '\')">' + escapeHtml(p) + '</a> <span>/</span>';
+    }
+  });
+  document.getElementById('folder-breadcrumb').innerHTML = bc;
+
+  // Render directory list
+  var listEl = document.getElementById('folder-list');
+  if (data.dirs.length === 0) {
+    listEl.innerHTML = '<div class="folder-item" style="color:var(--text-light)">No subdirectories</div>';
+  } else {
+    listEl.innerHTML = data.dirs.map(function(d) {
+      var fullPath = data.path === '/' ? '/' + d : data.path + '/' + d;
+      return '<div class="folder-item" onclick="navigateToFolder(\'' + escapeAttr(fullPath) + '\')">' +
+        '&#128193; ' + escapeHtml(d) + '</div>';
+    }).join('');
+  }
+
+  // Update select button state
+  var selectBtn = document.getElementById('folder-select-btn');
+  var statusEl = document.getElementById('folder-status');
+  if (data.writable) {
+    selectBtn.disabled = false;
+    statusEl.textContent = '';
+  } else {
+    selectBtn.disabled = true;
+    statusEl.textContent = 'This directory is not writable';
+  }
+}
+
+function selectFolder() {
+  document.getElementById('settings-export-path').value = currentBrowsePath;
+  document.getElementById('folder-browser').style.display = 'none';
+}
+
+function escapeHtml(str) {
+  var div = document.createElement('div');
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
+}
+
+function escapeAttr(str) {
+  return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
 // Shared locale-aware number parsing/formatting helpers for forms.
 window.TDNumber = (function() {
   const decSep = (1.1).toLocaleString().charAt(1);

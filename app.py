@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from datetime import date
+import os
 import re
 
 from flask import Flask, jsonify, render_template, request
@@ -7,7 +8,7 @@ from flask import Flask, jsonify, render_template, request
 import db
 import ecb
 import helpers
-from config import CONTINUATION_ALERT_DAYS, BASE_CURRENCY
+from config import CONTINUATION_ALERT_DAYS, BASE_CURRENCY, EXPORT_PATH
 from export import export_xlsx
 
 app = Flask(__name__)
@@ -435,6 +436,64 @@ def remove_currency(code):
         db.delete_currency(conn, code)
         ecb.clear_cache()
         return jsonify({"ok": True})
+
+
+# ── Settings ──
+
+@app.route("/api/settings")
+def get_settings():
+    with db_conn() as conn:
+        settings = db.get_settings(conn)
+    # Provide defaults
+    settings.setdefault("export_path", EXPORT_PATH)
+    return jsonify(settings)
+
+
+@app.route("/api/settings", methods=["PUT"])
+def update_settings():
+    data, err = parse_json()
+    if err:
+        return err
+
+    export_path = data.get("export_path")
+    if export_path is not None:
+        export_path = os.path.expanduser(export_path)
+        if not os.path.isabs(export_path):
+            return jsonify({"ok": False, "error": "Path must be absolute"}), 400
+        if not os.path.isdir(export_path):
+            return jsonify({"ok": False, "error": "Directory does not exist"}), 400
+        if not os.access(export_path, os.W_OK):
+            return jsonify({"ok": False, "error": "Directory is not writable"}), 400
+
+        with db_conn() as conn:
+            db.set_setting(conn, "export_path", export_path)
+
+    return jsonify({"ok": True})
+
+
+@app.route("/api/browse-dirs")
+def browse_dirs():
+    path = request.args.get("path", os.path.expanduser("~"))
+    path = os.path.expanduser(path)
+    if not os.path.isabs(path):
+        return jsonify({"error": "Path must be absolute"}), 400
+    if not os.path.isdir(path):
+        return jsonify({"error": "Not a directory"}), 400
+
+    try:
+        entries = sorted(
+            e.name for e in os.scandir(path)
+            if e.is_dir() and not e.name.startswith(".")
+        )
+    except PermissionError:
+        entries = []
+
+    writable = os.access(path, os.W_OK)
+    return jsonify({
+        "path": path,
+        "dirs": entries,
+        "writable": writable,
+    })
 
 
 # ── Template Helpers ──
