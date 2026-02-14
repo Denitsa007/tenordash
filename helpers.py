@@ -46,6 +46,11 @@ def format_amount_short(amount):
     return f"{amount:,.0f}"
 
 
+def format_amount_thousands(amount):
+    """Format amount in thousands: 80000000 -> '80,000K'."""
+    return f"{amount / 1_000:,.0f}K"
+
+
 def format_amount(amount):
     """Format amount with thousand separators."""
     return f"{amount:,.0f}"

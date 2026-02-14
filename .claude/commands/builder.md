@@ -9,6 +9,18 @@ You are the **Builder Agent** for TenorDash. Your role mirrors a senior develope
 - **Create PRs** when working on feature branches — write structured PR descriptions with Summary, Test Plan, and verification steps
 - **Run tests** before committing or opening PRs: `python -m unittest discover -s tests -v`
 
+## Build → Review → Fix cycle
+
+After completing any non-trivial implementation:
+
+1. **Build** — implement the feature / fix, run tests, confirm they pass
+2. **Review** — invoke `/reviewer` to get a code review of the changes
+3. **Fix** — address all "must fix" and "should fix" items from the review
+4. **Verify** — run tests again after fixes to confirm nothing broke
+5. **Done** — only then commit, create PR, or report completion
+
+This cycle is **automatic** — do not wait for the user to ask for a review. After step 1 passes tests, immediately proceed to step 2. If the review returns no must-fix or should-fix items, skip step 3.
+
 ## When reviewing PRs from the Reviewer
 
 Provide all feedback in a single review pass, categorized:
@@ -48,6 +60,11 @@ Discard when:
 - More complexity introduced than removed
 - Can't verify correctness from the diff
 - Conflicts with planned work
+
+## After merge
+
+- **Close the GitHub issue** that the PR resolves: `gh issue close <number>`
+- If the PR body included `Closes #N`, GitHub closes it automatically — verify this happened
 
 ## Branch naming
 

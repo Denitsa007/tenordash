@@ -28,6 +28,13 @@ class ExportTests(unittest.TestCase):
         self.addCleanup(setattr, export, "EXPORT_PATH", self._orig_export_path)
         self.addCleanup(setattr, export, "EXPORT_FILE", self._orig_export_file)
 
+        # Also update the DB setting so _resolve_export_path() uses temp dir
+        conn = db.get_db()
+        try:
+            db.set_setting(conn, "export_path", export_dir)
+        finally:
+            conn.close()
+
         self.export_file = export.EXPORT_FILE
 
     def _seed_data(self):

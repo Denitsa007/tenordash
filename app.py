@@ -1,8 +1,9 @@
 from contextlib import contextmanager
 from datetime import date
+import os
 import re
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, g, jsonify, render_template, request
 
 import db
 import ecb
@@ -13,10 +14,10 @@ from export import export_xlsx
 app = Flask(__name__)
 
 
-def _try_export():
+def _try_export(export_path=None):
     """Run export; return warning string on failure, None on success."""
     try:
-        export_xlsx()
+        export_xlsx(export_path=export_path)
         return None
     except Exception:
         app.logger.exception("Auto-export failed")
@@ -60,11 +61,12 @@ def validate_advance_date_order(data):
 
 
 @app.context_processor
-def inject_currencies():
-    """Make currencies list available in every template."""
+def inject_globals():
+    """Make currencies list and settings available in every template."""
     with db_conn() as conn:
         currencies = [dict(r) for r in db.get_currencies(conn)]
-        return {"currencies": currencies, "BASE_CURRENCY": BASE_CURRENCY}
+        g.settings = db.get_all_settings(conn)
+        return {"currencies": currencies, "BASE_CURRENCY": BASE_CURRENCY, "settings": g.settings}
 
 
 # ── Dashboard ──
@@ -393,6 +395,56 @@ def remove_currency(code):
         return jsonify({"ok": True})
 
 
+# ── Settings API ──
+
+VALID_DISPLAY_UNITS = {"full", "thousands", "millions"}
+
+
+@app.route("/api/settings")
+def list_settings():
+    with db_conn() as conn:
+        return jsonify(db.get_all_settings(conn))
+
+
+@app.route("/api/settings", methods=["PUT"])
+def update_setting():
+    data, err = parse_json(required_fields=["key", "value"])
+    if err:
+        return err
+
+    key = data["key"]
+    value = data["value"]
+
+    if not isinstance(value, str) or not value.strip():
+        return jsonify({"ok": False, "error": "Value must be a non-empty string"}), 400
+
+    if key == "display_unit":
+        if value not in VALID_DISPLAY_UNITS:
+            return jsonify({"ok": False, "error": f"display_unit must be one of: {', '.join(sorted(VALID_DISPLAY_UNITS))}"}), 400
+
+    elif key == "export_path":
+        path = os.path.expanduser(value)
+        if not os.path.isabs(path):
+            return jsonify({"ok": False, "error": "Export path must be an absolute path"}), 400
+        if not os.path.isdir(path):
+            return jsonify({"ok": False, "error": "Directory does not exist"}), 400
+        if not os.access(path, os.W_OK):
+            return jsonify({"ok": False, "error": "Directory is not writable"}), 400
+        value = path
+
+    else:
+        return jsonify({"ok": False, "error": f"Unknown setting: {key}"}), 400
+
+    with db_conn() as conn:
+        db.set_setting(conn, key, value)
+
+    # Trigger re-export with the new path so the file lands there immediately
+    if key == "export_path":
+        _try_export(export_path=value)
+
+    return jsonify({"ok": True})
+
+
 # ── Template Helpers ──
 
 @app.template_filter("amount")
@@ -406,7 +458,13 @@ def amount_filter(value):
 @app.template_filter("amount_short")
 def amount_short_filter(value):
     try:
-        return helpers.format_amount_short(int(value))
+        v = int(value)
+        unit = getattr(g, 'settings', {}).get("display_unit", "millions")
+        if unit == "full":
+            return f"{v:,}"
+        if unit == "thousands":
+            return helpers.format_amount_thousands(v)
+        return helpers.format_amount_short(v)
     except (ValueError, TypeError):
         return value
 

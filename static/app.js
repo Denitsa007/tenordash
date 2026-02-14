@@ -14,6 +14,65 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
+// ── Settings Modal ──
+
+async function openSettingsModal() {
+  const msgEl = document.getElementById('settings-msg');
+  msgEl.style.display = 'none';
+  document.getElementById('settings-submit-btn').disabled = false;
+
+  try {
+    const res = await fetch('/api/settings');
+    const settings = await res.json();
+    document.getElementById('settings-display-unit').value = settings.display_unit || 'millions';
+    document.getElementById('settings-export-path').value = settings.export_path || '';
+  } catch (e) {
+    // Use defaults if fetch fails
+  }
+
+  document.getElementById('settings-modal').classList.add('show');
+}
+
+function closeSettingsModal() {
+  document.getElementById('settings-modal').classList.remove('show');
+}
+
+async function saveSettings(e) {
+  e.preventDefault();
+  const msgEl = document.getElementById('settings-msg');
+  const btn = document.getElementById('settings-submit-btn');
+  btn.disabled = true;
+  msgEl.style.display = 'none';
+
+  const LABELS = { display_unit: 'Display Unit', export_path: 'Export Path' };
+  const settings = [
+    { key: 'display_unit', value: document.getElementById('settings-display-unit').value },
+    { key: 'export_path', value: document.getElementById('settings-export-path').value.trim() },
+  ];
+
+  let saved = [];
+  for (const s of settings) {
+    const res = await fetch('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(s),
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      let msg = (LABELS[s.key] || s.key) + ': ' + (data.error || 'Failed to save');
+      if (saved.length) msg += ' (other settings were saved)';
+      msgEl.textContent = msg;
+      msgEl.className = 'currency-msg error';
+      msgEl.style.display = 'block';
+      btn.disabled = false;
+      return;
+    }
+    saved.push(s.key);
+  }
+
+  location.reload();
+}
+
 // Shared locale-aware number parsing/formatting helpers for forms.
 window.TDNumber = (function() {
   const decSep = (1.1).toLocaleString().charAt(1);
