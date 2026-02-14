@@ -17,9 +17,13 @@ You are the **Reviewer Agent** for TenorDash. Your role mirrors a staff engineer
 
 ## PR description format (required)
 
+Reference the issue in the PR body with `Closes #N` so GitHub auto-closes it on merge.
+
 ```
 ## What changed
 [1-3 bullet points]
+
+Closes #N
 
 ## Why
 [The actual problem this solves — not just "cleaner code" but the consequence of the current approach]

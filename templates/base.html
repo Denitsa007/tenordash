@@ -46,6 +46,10 @@
       <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1L1 5v1h14V5L8 1zM3 7v5h2V7H3zm4 0v5h2V7H7zm4 0v5h2V7h-2zM1 13v2h14v-2H1z"/></svg>
       Banks
     </a>
+    <a href="#" class="nav-item" onclick="openSettingsModal(); return false;">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 10a2 2 0 100-4 2 2 0 000 4zm6.32-1.906l-1.066-.616a5.21 5.21 0 000-1.956l1.066-.616a.5.5 0 00.183-.683l-1-1.732a.5.5 0 00-.683-.183l-1.066.616a5.163 5.163 0 00-1.694-.978V1.5a.5.5 0 00-.5-.5h-2a.5.5 0 00-.5.5v1.232a5.163 5.163 0 00-1.694.978L4.3 3.094a.5.5 0 00-.683.183l-1 1.732a.5.5 0 00.183.683l1.066.616a5.21 5.21 0 000 1.956l-1.066.616a.5.5 0 00-.183.683l1 1.732a.5.5 0 00.683.183l1.066-.616c.502.42 1.075.748 1.694.978V14.5a.5.5 0 00.5.5h2a.5.5 0 00.5-.5v-1.232a5.163 5.163 0 001.694-.978l1.066.616a.5.5 0 00.683-.183l1-1.732a.5.5 0 00-.183-.683z"/></svg>
+      Settings
+    </a>
     <div class="nav-spacer"></div>
     <div class="sidebar-monogram">
       <img src="{{ url_for('static', filename='logo.png') }}" alt="ds" title="Created by Denitsa Stachowski" />
@@ -76,6 +80,39 @@
           <button type="submit" class="btn-primary" id="currency-submit-btn">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 7 5.5 10.5 12 4"/></svg>
             Add
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settings-modal">
+    <div class="modal-box" style="width: 420px;">
+      <h3>
+        Settings
+        <button class="panel-close" onclick="closeSettingsModal()">&times;</button>
+      </h3>
+      <form id="settings-form" onsubmit="saveSettings(event)">
+        <div class="form-group">
+          <label>Display Unit</label>
+          <select id="settings-display-unit">
+            <option value="full">Full (80,000,000)</option>
+            <option value="thousands">Thousands (80,000K)</option>
+            <option value="millions">Millions (80M)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Export Path</label>
+          <input type="text" id="settings-export-path" placeholder="/path/to/export/folder" />
+          <div class="form-hint" style="color: var(--text-light);">Absolute path to the directory where .xlsx exports are saved</div>
+        </div>
+        <div class="currency-msg" id="settings-msg" style="display:none"></div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" onclick="closeSettingsModal()">Cancel</button>
+          <button type="submit" class="btn-primary" id="settings-submit-btn">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 7 5.5 10.5 12 4"/></svg>
+            Save
           </button>
         </div>
       </form>
@@ -137,12 +174,15 @@
     }
   }
 
-  // Close modal on overlay click or Escape
+  // Close modals on overlay click or Escape
   document.getElementById('currency-modal').addEventListener('click', function(e) {
     if (e.target === this) closeCurrencyModal();
   });
+  document.getElementById('settings-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeSettingsModal();
+  });
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeCurrencyModal();
+    if (e.key === 'Escape') { closeCurrencyModal(); closeSettingsModal(); }
   });
   </script>
   {% block scripts %}{% endblock %}
