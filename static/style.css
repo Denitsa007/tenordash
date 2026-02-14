@@ -115,6 +115,27 @@ body {
   min-height: 100vh;
 }
 
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 16px;
+  align-items: start;
+}
+
+.dashboard-sidebar .card,
+.dashboard-sidebar .section,
+.dashboard-sidebar .alert-box {
+  margin-bottom: 16px;
+}
+
+.dashboard-sidebar .ecb-footer {
+  text-align: left;
+}
+
+.dashboard-main .cards {
+  margin-bottom: 16px;
+}
+
 .topbar {
   display: flex;
   justify-content: space-between;
