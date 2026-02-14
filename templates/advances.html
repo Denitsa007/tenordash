@@ -76,16 +76,14 @@
   </table>
 </div>
 
-<!-- Slide-out Panel -->
-<div class="panel-overlay" id="adv-panel">
-  <div class="slide-panel">
+<!-- View Modal -->
+<div class="modal-overlay" id="adv-view-modal">
+  <div class="modal-box" style="width: 480px;">
     <h3>
-      <span id="adv-panel-title">New Fixed Advance</span>
-      <button class="panel-close" onclick="closeAdvForm()">&times;</button>
+      <span id="adv-view-title"></span>
+      <button class="panel-close" onclick="closeAdvView()">&times;</button>
     </h3>
-
-    <!-- View mode -->
-    <div id="adv-view" class="panel-view" style="display:none">
+    <div class="panel-view">
       <div class="detail-grid">
         <div class="detail-item">
           <div class="detail-label">Bank</div>
@@ -135,16 +133,24 @@
         </div>
       </div>
       <div class="form-actions">
-        <button type="button" class="btn-secondary" onclick="closeAdvForm()">Close</button>
+        <button type="button" class="btn-secondary" onclick="closeAdvView()">Close</button>
         <button type="button" class="btn-primary" id="adv-view-edit-btn">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.5 1.5l2 2L4 12H2v-2z"/></svg>
           Edit
         </button>
       </div>
     </div>
+  </div>
+</div>
 
-    <!-- Edit mode -->
-    <form id="adv-form" onsubmit="saveAdv(event)" style="display:none">
+<!-- Edit Modal -->
+<div class="modal-overlay" id="adv-panel">
+  <div class="modal-box" style="width: 520px; max-height: 90vh; overflow-y: auto;">
+    <h3>
+      <span id="adv-panel-title">New Fixed Advance</span>
+      <button class="panel-close" onclick="closeAdvForm()">&times;</button>
+    </h3>
+    <form id="adv-form" onsubmit="saveAdv(event)">
       <input type="hidden" id="adv-edit-id" value="" />
 
       <div class="form-row">
@@ -239,6 +245,7 @@
 </div>
 {% endblock %}
 
+
 {% block scripts %}
 <script>
 const parseNum = window.TDNumber.parseLocaleNumber;
@@ -261,13 +268,6 @@ function dismissClWarning() {
   document.getElementById('cl-warning').style.display = 'none';
 }
 
-function showAdvPanel(mode) {
-  const view = document.getElementById('adv-view');
-  const form = document.getElementById('adv-form');
-  view.style.display = mode === 'view' ? 'block' : 'none';
-  form.style.display = mode === 'edit' ? 'block' : 'none';
-}
-
 function openAdvForm() {
   document.getElementById('adv-panel-title').textContent = 'New Fixed Advance';
   document.getElementById('adv-form').reset();
@@ -276,12 +276,15 @@ function openAdvForm() {
   document.getElementById('calc-days').textContent = '—';
   document.getElementById('calc-rate').textContent = '—';
   dismissClWarning();
-  showAdvPanel('edit');
   document.getElementById('adv-panel').classList.add('show');
 }
 
 function closeAdvForm() {
   document.getElementById('adv-panel').classList.remove('show');
+}
+
+function closeAdvView() {
+  document.getElementById('adv-view-modal').classList.remove('show');
 }
 
 let currentViewAdvId = null;
@@ -292,7 +295,7 @@ async function viewAdv(id) {
   const d = await res.json();
   currentViewAdvId = id;
 
-  document.getElementById('adv-panel-title').textContent = id;
+  document.getElementById('adv-view-title').textContent = id;
   document.getElementById('adv-view-bank').textContent = d.bank;
   document.getElementById('adv-view-cl').textContent = d.credit_line_id;
   document.getElementById('adv-view-currency').innerHTML =
@@ -310,8 +313,7 @@ async function viewAdv(id) {
   document.getElementById('adv-view-rate').textContent =
     d.rate_pa != null ? parseFloat(d.rate_pa).toFixed(4) + '%' : '—';
 
-  showAdvPanel('view');
-  document.getElementById('adv-panel').classList.add('show');
+  document.getElementById('adv-view-modal').classList.add('show');
 }
 
 async function editAdv(id) {
@@ -330,13 +332,15 @@ async function editAdv(id) {
   setAmountField('adv-interest', d.interest_amount, true);
   updateCalcPreview();
   dismissClWarning();
-  showAdvPanel('edit');
   document.getElementById('adv-panel').classList.add('show');
 }
 
-// "Edit" button inside view mode
+// "Edit" button inside view mode — close view, open edit
 document.getElementById('adv-view-edit-btn').addEventListener('click', function() {
-  if (currentViewAdvId) editAdv(currentViewAdvId);
+  if (currentViewAdvId) {
+    closeAdvView();
+    editAdv(currentViewAdvId);
+  }
 });
 
 // Row click → open view mode (skip clicks on action buttons)
@@ -439,9 +443,13 @@ function updateCalcPreview() {
 // Listen for start date changes too
 document.getElementById('adv-start').addEventListener('change', updateCalcPreview);
 
-// Auto-open form if ?new=1
+// Auto-open form if ?new=1, or edit panel if #edit-<id>
 if (new URLSearchParams(window.location.search).get('new')) {
   openAdvForm();
+  history.replaceState(null, '', '/advances');
+} else if (window.location.hash.startsWith('#edit-')) {
+  const id = window.location.hash.slice(6);
+  if (id) editAdv(id);
   history.replaceState(null, '', '/advances');
 }
 
