@@ -133,6 +133,23 @@ def dashboard():
             a["cont_weekday"] = cont.strftime("%a")
         continuation_calendar = build_continuation_calendar(alerts)
 
+        tooltip_map = {}
+        for a in alerts:
+            d = a["continuation_date"]
+            line = f"{a['id']} · {a['bank']} · {a['currency']} {int(a['amount_original']):,}"
+            tooltip_map.setdefault(d, []).append(line)
+        tooltip_map = {d: "\n".join(lines) for d, lines in tooltip_map.items()}
+
+        limit_setting = db.get_setting(conn, "continuation_limit", "5")
+        upcoming_limit = None if limit_setting == "all" else int(limit_setting)
+        upcoming = db.get_upcoming_continuations(conn, limit=upcoming_limit)
+        upcoming = [helpers.enrich_advance(a) for a in upcoming]
+        for a in upcoming:
+            cont = date.fromisoformat(a["continuation_date"])
+            a["cont_day"] = cont.day
+            a["cont_mon"] = cont.strftime("%b").upper()
+            a["cont_weekday"] = cont.strftime("%a")
+
         active = db.get_active_advances(conn)
         active = [helpers.enrich_advance(a) for a in active]
 
@@ -145,12 +162,15 @@ def dashboard():
             "dashboard.html",
             totals=totals,
             alerts=alerts,
+            upcoming=upcoming,
             active=active,
             utilization=utilization,
             fx_rates=fx_rates,
             ecb_date=rate_date,
             continuation_calendar=continuation_calendar,
+            tooltip_map=tooltip_map,
             today=date.today().isoformat(),
+            cont_limit=upcoming_limit,
         )
 
 
@@ -417,6 +437,7 @@ def api_continuation_calendar():
 
         items = [
             {"day": a["cont_day"], "mon": a["cont_mon"],
+             "date": a["continuation_date"],
              "id": a["id"], "bank": a["bank"],
              "currency": a["currency"],
              "amount": f"{int(a['amount_original']):,}"}
@@ -484,6 +505,7 @@ def remove_currency(code):
 # ── Settings API ──
 
 VALID_DISPLAY_UNITS = {"full", "thousands", "millions"}
+VALID_CONTINUATION_LIMITS = {"3", "5", "10", "all"}
 
 
 @app.route("/api/settings")
@@ -507,6 +529,10 @@ def update_setting():
     if key == "display_unit":
         if value not in VALID_DISPLAY_UNITS:
             return jsonify({"ok": False, "error": f"display_unit must be one of: {', '.join(sorted(VALID_DISPLAY_UNITS))}"}), 400
+
+    elif key == "continuation_limit":
+        if value not in VALID_CONTINUATION_LIMITS:
+            return jsonify({"ok": False, "error": f"continuation_limit must be one of: {', '.join(sorted(VALID_CONTINUATION_LIMITS))}"}), 400
 
     elif key == "export_path":
         path = os.path.expanduser(value)

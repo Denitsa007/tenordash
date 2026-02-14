@@ -25,6 +25,7 @@ async function openSettingsModal() {
     const res = await fetch('/api/settings');
     const settings = await res.json();
     document.getElementById('settings-display-unit').value = settings.display_unit || 'millions';
+    document.getElementById('settings-continuation-limit').value = settings.continuation_limit || '5';
     document.getElementById('settings-export-path').value = settings.export_path || '';
   } catch (e) {
     // Use defaults if fetch fails
@@ -140,9 +141,10 @@ async function saveSettings(e) {
   btn.disabled = true;
   msgEl.style.display = 'none';
 
-  const LABELS = { display_unit: 'Display Unit', export_path: 'Export Path' };
+  const LABELS = { display_unit: 'Display Unit', continuation_limit: 'Continuations to show', export_path: 'Export Path' };
   const settings = [
     { key: 'display_unit', value: document.getElementById('settings-display-unit').value },
+    { key: 'continuation_limit', value: document.getElementById('settings-continuation-limit').value },
     { key: 'export_path', value: document.getElementById('settings-export-path').value.trim() },
   ];
 
