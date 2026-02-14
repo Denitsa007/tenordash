@@ -439,9 +439,13 @@ function updateCalcPreview() {
 // Listen for start date changes too
 document.getElementById('adv-start').addEventListener('change', updateCalcPreview);
 
-// Auto-open form if ?new=1
+// Auto-open form if ?new=1, or edit panel if #edit-<id>
 if (new URLSearchParams(window.location.search).get('new')) {
   openAdvForm();
+  history.replaceState(null, '', '/advances');
+} else if (window.location.hash.startsWith('#edit-')) {
+  const id = window.location.hash.slice(6);
+  if (id) editAdv(id);
   history.replaceState(null, '', '/advances');
 }
 
