@@ -80,16 +80,14 @@
   </table>
 </div>
 
-<!-- Slide-out Panel -->
-<div class="panel-overlay" id="cl-panel">
-  <div class="slide-panel">
+<!-- View Modal -->
+<div class="modal-overlay" id="cl-view-modal">
+  <div class="modal-box" style="width: 480px;">
     <h3>
-      <span id="cl-panel-title">New Credit Line</span>
-      <button class="panel-close" onclick="closeCLForm()">&times;</button>
+      <span id="cl-view-title"></span>
+      <button class="panel-close" onclick="closeCLView()">&times;</button>
     </h3>
-
-    <!-- View mode -->
-    <div id="cl-view" class="panel-view" style="display:none">
+    <div class="panel-view">
       <div class="detail-grid">
         <div class="detail-item">
           <div class="detail-label">Bank</div>
@@ -128,17 +126,25 @@
           <div class="detail-value" id="cl-view-note"></div>
         </div>
       </div>
-      <div class="form-actions" id="cl-view-actions">
-        <button type="button" class="btn-secondary" onclick="closeCLForm()">Close</button>
+      <div class="form-actions">
+        <button type="button" class="btn-secondary" onclick="closeCLView()">Close</button>
         <button type="button" class="btn-primary" id="cl-view-edit-btn">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.5 1.5l2 2L4 12H2v-2z"/></svg>
           Edit
         </button>
       </div>
     </div>
+  </div>
+</div>
 
-    <!-- Edit mode -->
-    <form id="cl-form" onsubmit="saveCL(event)" style="display:none">
+<!-- Edit Modal -->
+<div class="modal-overlay" id="cl-panel">
+  <div class="modal-box" style="width: 520px; max-height: 90vh; overflow-y: auto;">
+    <h3>
+      <span id="cl-panel-title">New Credit Line</span>
+      <button class="panel-close" onclick="closeCLForm()">&times;</button>
+    </h3>
+    <form id="cl-form" onsubmit="saveCL(event)">
       <input type="hidden" id="cl-edit-id" value="" />
       <div class="form-group">
         <label>Bank</label>
@@ -211,26 +217,19 @@ function formatCLAmount(el) {
   window.TDNumber.formatIntegerInput(el);
 }
 
-let editingCLId = null;
-
-function showCLPanel(mode) {
-  const view = document.getElementById('cl-view');
-  const form = document.getElementById('cl-form');
-  view.style.display = mode === 'view' ? 'block' : 'none';
-  form.style.display = mode === 'edit' ? 'block' : 'none';
-}
-
 function openCLForm() {
-  editingCLId = null;
   document.getElementById('cl-panel-title').textContent = 'New Credit Line';
   document.getElementById('cl-form').reset();
   document.getElementById('cl-edit-id').value = '';
-  showCLPanel('edit');
   document.getElementById('cl-panel').classList.add('show');
 }
 
 function closeCLForm() {
   document.getElementById('cl-panel').classList.remove('show');
+}
+
+function closeCLView() {
+  document.getElementById('cl-view-modal').classList.remove('show');
 }
 
 let currentViewCLId = null;
@@ -241,7 +240,7 @@ async function viewCL(id) {
   const data = await res.json();
   currentViewCLId = id;
 
-  document.getElementById('cl-panel-title').textContent = id;
+  document.getElementById('cl-view-title').textContent = id;
   document.getElementById('cl-view-bank').textContent = data.bank_name || data.bank_key;
   document.getElementById('cl-view-description').textContent = data.description || '—';
   document.getElementById('cl-view-currency').innerHTML =
@@ -258,15 +257,13 @@ async function viewCL(id) {
   // Hide Edit button for archived lines
   document.getElementById('cl-view-edit-btn').style.display = data.archived ? 'none' : '';
 
-  showCLPanel('view');
-  document.getElementById('cl-panel').classList.add('show');
+  document.getElementById('cl-view-modal').classList.add('show');
 }
 
 async function editCL(id) {
   const res = await fetch('/credit-lines/' + id);
   if (!res.ok) return;
   const data = await res.json();
-  editingCLId = id;
   document.getElementById('cl-panel-title').textContent = 'Edit ' + id;
   document.getElementById('cl-edit-id').value = id;
   document.getElementById('cl-bank').value = data.bank_key;
@@ -277,13 +274,15 @@ async function editCL(id) {
   document.getElementById('cl-start').value = data.start_date;
   document.getElementById('cl-end').value = data.end_date || '';
   document.getElementById('cl-note').value = data.note || '';
-  showCLPanel('edit');
   document.getElementById('cl-panel').classList.add('show');
 }
 
-// "Edit" button inside view mode
+// "Edit" button inside view mode — close view, open edit
 document.getElementById('cl-view-edit-btn').addEventListener('click', function() {
-  if (currentViewCLId) editCL(currentViewCLId);
+  if (currentViewCLId) {
+    closeCLView();
+    editCL(currentViewCLId);
+  }
 });
 
 // Row click → open view mode (skip clicks on action buttons)
