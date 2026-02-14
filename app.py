@@ -59,6 +59,43 @@ def validate_advance_date_order(data):
     return None
 
 
+def build_continuation_calendar(alerts):
+    """Build current-month calendar metadata with continuation dates marked."""
+    today = date.today()
+    month_start = date(today.year, today.month, 1)
+
+    if today.month == 12:
+        next_month = date(today.year + 1, 1, 1)
+    else:
+        next_month = date(today.year, today.month + 1, 1)
+
+    days_in_month = (next_month - month_start).days
+    leading_blanks = month_start.weekday()  # Monday=0
+    marked_dates = {a["continuation_date"] for a in alerts}
+
+    cells = []
+    for _ in range(leading_blanks):
+        cells.append({"day": "", "date": None, "marked": False, "today": False})
+
+    for day_num in range(1, days_in_month + 1):
+        day_date = date(today.year, today.month, day_num)
+        iso = day_date.isoformat()
+        cells.append({
+            "day": day_num,
+            "date": iso,
+            "marked": iso in marked_dates,
+            "today": day_date == today,
+        })
+
+    while len(cells) % 7 != 0:
+        cells.append({"day": "", "date": None, "marked": False, "today": False})
+
+    return {
+        "month_label": month_start.strftime("%B %Y"),
+        "cells": cells,
+    }
+
+
 @app.context_processor
 def inject_currencies():
     """Make currencies list available in every template."""
@@ -77,6 +114,12 @@ def dashboard():
 
         alerts = db.get_continuation_alerts(conn, CONTINUATION_ALERT_DAYS)
         alerts = [helpers.enrich_advance(a) for a in alerts]
+        for a in alerts:
+            cont = date.fromisoformat(a["continuation_date"])
+            a["cont_day"] = cont.day
+            a["cont_mon"] = cont.strftime("%b").upper()
+            a["cont_weekday"] = cont.strftime("%a")
+        continuation_calendar = build_continuation_calendar(alerts)
 
         active = db.get_active_advances(conn)
         active = [helpers.enrich_advance(a) for a in active]
@@ -94,6 +137,7 @@ def dashboard():
             utilization=utilization,
             fx_rates=fx_rates,
             ecb_date=rate_date,
+            continuation_calendar=continuation_calendar,
             today=date.today().isoformat(),
         )
 
