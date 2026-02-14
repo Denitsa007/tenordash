@@ -4,13 +4,15 @@ A local Flask web app for tracking treasury fixed advance borrowings — replaci
 
 ## What It Does
 
-- **Dashboard** — Active instruments at a glance, summary cards per currency, upcoming continuation alerts, credit line utilization bars with aggregate CHF equivalent
+- **Dashboard** — Active instruments at a glance, summary cards per currency, upcoming continuation alerts with list/calendar views and month navigation, credit line utilization bars with aggregate CHF equivalent
 - **Fixed Advances CRUD** — Create, edit, delete borrowing drawdowns with auto-generated IDs (`FV0001`, `FV0002`, ...), live calculation preview (days, back-calculated interest rate), and credit line capacity warnings
-- **Credit Lines** — Manage borrowing facilities with bank linkage, currency, committed status
+- **Credit Lines** — Manage borrowing facilities with bank linkage, currency, committed status, soft delete (archive)
 - **Banks** — Simple reference table for bank dropdowns
 - **Dynamic Currency Management** — Add new currencies inline from any form via a "+" button; ECB validation, auto-assigned badge colors from a 12-color palette. Ships with CHF, CZK, EUR, GBP, PLN, USD; new currencies (e.g. JPY, SEK) can be added at any time
 - **Continuation Date Auto-Suggest** — 3 business days before maturity, editable
-- **ECB FX Rates** — Dynamically fetches cross rates from ECB Data API for all active currencies; cached daily with automatic cache reset when currencies change
+- **ECB FX Rates** — Dynamically fetches cross rates from ECB Data API for all active currencies; displayed in the navigation sidebar on every page; cached daily with automatic cache reset when currencies change
+- **Auto-Export for Power BI** — `.xlsx` export triggers automatically on every advance/credit line save; configurable export path via Settings
+- **Settings** — Configurable display unit (full / thousands / millions), upcoming continuations display limit, and export path with folder browser
 - **Locale-Aware Formatting** — Amount fields use the browser's locale for thousands/decimal separators
 
 ## Tech Stack
@@ -34,21 +36,29 @@ The database (`fixed_advances.db`) is created automatically on first run.
 ## Project Structure
 
 ```
-├── app.py              # Flask routes, template filters, currency API
+├── app.py              # Flask routes, template filters, settings & currency API
 ├── db.py               # SQLite schema, migrations, queries
 ├── helpers.py          # Date math, interest rate calc, business-day logic
 ├── ecb.py              # ECB Data API client (dynamic currencies, daily cache)
+├── export.py           # Auto-export .xlsx for Power BI (advances + credit lines)
 ├── config.py           # Paths, business rules, base currency
 ├── static/
 │   ├── style.css       # Full UI styling
-│   ├── app.js          # Panel close handlers
+│   ├── app.js          # Settings modal, folder browser, shared handlers
 │   └── logo.png        # Monogram
 ├── templates/
-│   ├── base.html       # Sidebar layout, currency modal, dynamic CSS
-│   ├── dashboard.html  # Summary cards, alerts, active instruments
+│   ├── base.html       # Sidebar layout, ECB rates, currency/settings modals
+│   ├── dashboard.html  # Summary cards, alerts, continuations, instruments
 │   ├── advances.html   # Advances list + slide-out form
 │   ├── credit_lines.html
 │   └── banks.html
+├── tests/
+│   ├── test_api_contract.py        # Route/endpoint tests
+│   ├── test_continuation_calendar.py # Calendar grid + navigation tests
+│   ├── test_ecb.py                 # API resilience tests
+│   ├── test_export.py              # .xlsx export tests
+│   ├── test_helpers.py             # Business logic tests
+│   └── test_settings.py            # Settings API + display filter tests
 └── TenorDash PRD.md  # Product requirements
 ```
 
@@ -61,10 +71,11 @@ The database (`fixed_advances.db`) is created automatically on first run.
 - **CL capacity check**: On save, compares current drawn amount + new advance against the credit line facility; warns if exceeded but allows the user to proceed
 - **Currencies**: Stored in a `currencies` table with code, CSS color, display order, and ECB availability flag. New currencies are validated against the ECB API on creation; non-ECB currencies are allowed but flagged
 - **FX conversion**: ECB cross rates via EUR — dynamically builds the API URL from active currencies, converts to CHF per 1 unit of each currency; cached daily with automatic reset on currency changes
+- **Auto-export**: `.xlsx` file written on every advance/credit line create, update, or delete; export path configurable in Settings; Power BI reads from this file
 
 ## Status
 
-Phase 1 (core CRUD + dashboard) is complete. Phase 2 (Excel/CSV import, `.xlsx` auto-export for Power BI) is planned.
+Phase 1 (core CRUD + dashboard) and Phase 2 (`.xlsx` auto-export for Power BI, settings) are complete.
 
 ## Release Process
 
