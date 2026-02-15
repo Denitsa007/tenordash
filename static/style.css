@@ -1039,3 +1039,69 @@ tr[data-archived="true"]:hover td { opacity: 0.75; }
 
 /* Clickable table rows */
 .data-table tbody tr[data-id] { cursor: pointer; }
+
+/* ── Print Styles ── */
+
+@media print {
+  @page { size: landscape; }
+
+  /* Hide navigation and interactive chrome */
+  .sidebar,
+  .topbar-actions,
+  .row-actions,
+  .sort-indicator,
+  .filter-pills,
+  .modal-overlay,
+  .panel-overlay,
+  .nav-badge,
+  .cal-nav-btn,
+  .continuation-view-switch { display: none !important; }
+
+  /* Full-width layout (remove sidebar offset) */
+  body { display: block; background: #fff; }
+  .main {
+    margin-left: 0;
+    padding: 16px;
+    min-height: auto;
+  }
+
+  /* Stack dashboard grid vertically */
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Table adjustments */
+  .data-table { font-size: 11px; }
+  .data-table th { padding: 6px 10px; font-size: 10px; background: none; }
+  .data-table td { padding: 8px 10px; }
+  .mono { font-size: 11px; }
+
+  /* Cards */
+  .card { box-shadow: none; border: 1px solid #ddd; }
+  .section { box-shadow: none; border: 1px solid #ddd; }
+
+  /* Keep page title visible */
+  .topbar { margin-bottom: 12px; }
+  .topbar h2 { font-size: 18px; }
+
+  /* Print-only FX footer */
+  .print-fx-footer {
+    display: flex !important;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    padding: 12px 0;
+    margin-top: 24px;
+    border-top: 1px solid #ccc;
+    font-size: 11px;
+    color: #666;
+  }
+  .print-fx-source {
+    width: 100%;
+    font-size: 10px;
+    color: #999;
+    margin-top: 4px;
+  }
+}
+
+/* Hide print FX footer on screen */
+.print-fx-footer { display: none; }
