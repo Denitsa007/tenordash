@@ -8,6 +8,7 @@ from flask import Flask, g, jsonify, render_template, request
 import db
 import ecb
 import helpers
+import import_utils
 from config import CONTINUATION_ALERT_DAYS, BASE_CURRENCY
 from export import export_xlsx
 
@@ -592,6 +593,107 @@ def browse_dirs():
         "path": path,
         "dirs": entries,
         "writable": writable,
+    })
+
+
+# ── Import ──
+
+@app.route("/import")
+def import_page():
+    with db_conn() as conn:
+        existing = {
+            "banks": conn.execute("SELECT COUNT(*) FROM banks").fetchone()[0],
+            "credit_lines": conn.execute("SELECT COUNT(*) FROM credit_lines").fetchone()[0],
+            "advances": conn.execute("SELECT COUNT(*) FROM fixed_advances").fetchone()[0],
+        }
+        return render_template("import.html", existing=existing)
+
+
+@app.route("/api/import/preview", methods=["POST"])
+def import_preview():
+    if "file" not in request.files:
+        return jsonify({"ok": False, "error": "No file uploaded"}), 400
+    f = request.files["file"]
+    if not f.filename:
+        return jsonify({"ok": False, "error": "No file selected"}), 400
+
+    import tempfile
+    tmp = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False)
+    try:
+        f.save(tmp.name)
+        tmp.close()
+        result = import_utils.parse_excel(tmp.name)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Failed to parse file: {e}"}), 400
+    finally:
+        os.unlink(tmp.name)
+
+    with db_conn() as conn:
+        existing = {
+            "banks": conn.execute("SELECT COUNT(*) FROM banks").fetchone()[0],
+            "credit_lines": conn.execute("SELECT COUNT(*) FROM credit_lines").fetchone()[0],
+            "advances": conn.execute("SELECT COUNT(*) FROM fixed_advances").fetchone()[0],
+        }
+
+    return jsonify({
+        "ok": True,
+        "banks": {
+            "count": len(result["banks"]["rows"]),
+            "rows": result["banks"]["rows"],
+            "errors": result["banks"]["errors"],
+        },
+        "credit_lines": {
+            "count": len(result["credit_lines"]["rows"]),
+            "rows": result["credit_lines"]["rows"][:5],
+            "errors": result["credit_lines"]["errors"],
+        },
+        "advances": {
+            "count": len(result["advances"]["rows"]),
+            "rows": result["advances"]["rows"][:5],
+            "errors": result["advances"]["errors"],
+        },
+        "existing": existing,
+    })
+
+
+@app.route("/api/import/execute", methods=["POST"])
+def import_execute():
+    if "file" not in request.files:
+        return jsonify({"ok": False, "error": "No file uploaded"}), 400
+    f = request.files["file"]
+    mode = request.form.get("mode", "append")
+
+    import tempfile
+    tmp = tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False)
+    try:
+        f.save(tmp.name)
+        tmp.close()
+        result = import_utils.parse_excel(tmp.name)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"Failed to parse file: {e}"}), 400
+    finally:
+        os.unlink(tmp.name)
+
+    with db_conn() as conn:
+        try:
+            if mode == "overwrite":
+                db.clear_all_data(conn)
+
+            banks_result = db.bulk_insert_banks(conn, result["banks"]["rows"])
+            cl_result = db.bulk_insert_credit_lines(conn, result["credit_lines"]["rows"])
+            adv_result = db.bulk_insert_advances(conn, result["advances"]["rows"])
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            return jsonify({"ok": False, "error": f"Import failed: {e}"}), 500
+
+    _try_export()
+
+    return jsonify({
+        "ok": True,
+        "banks": banks_result,
+        "credit_lines": cl_result,
+        "advances": adv_result,
     })
 
 

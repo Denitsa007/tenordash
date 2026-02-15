@@ -511,3 +511,83 @@ def get_cl_utilization(conn):
         "GROUP BY cl.id "
         "ORDER BY cl.id"
     ).fetchall()
+
+
+# ── Bulk Import ──
+
+def bulk_insert_banks(conn, rows):
+    """Insert banks, skipping duplicates. Returns {added, skipped}.
+
+    Does NOT commit — caller is responsible for committing the transaction.
+    """
+    added = 0
+    skipped = 0
+    for row in rows:
+        existing = conn.execute(
+            "SELECT bank_key FROM banks WHERE bank_key = ?", (row["bank_key"],)
+        ).fetchone()
+        if existing:
+            skipped += 1
+        else:
+            conn.execute(
+                "INSERT INTO banks (bank_key, bank_name) VALUES (?, ?)",
+                (row["bank_key"], row["bank_name"]),
+            )
+            added += 1
+    return {"added": added, "skipped": skipped}
+
+
+def bulk_insert_credit_lines(conn, rows):
+    """Insert credit lines. Returns {added, errors}.
+
+    Does NOT commit — caller is responsible for committing the transaction.
+    """
+    added = 0
+    errors = 0
+    for row in rows:
+        try:
+            conn.execute(
+                "INSERT INTO credit_lines (id, bank_key, description, currency, amount, "
+                "committed, start_date, end_date, note, archived) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
+                (row["id"], row["bank_key"], row.get("description"),
+                 row["currency"], row["amount"], row["committed"],
+                 row["start_date"], row.get("end_date"), row.get("note")),
+            )
+            added += 1
+        except Exception:
+            errors += 1
+    return {"added": added, "errors": errors}
+
+
+def bulk_insert_advances(conn, rows):
+    """Insert fixed advances. Returns {added, errors}.
+
+    Does NOT commit — caller is responsible for committing the transaction.
+    """
+    added = 0
+    errors = 0
+    for row in rows:
+        try:
+            conn.execute(
+                "INSERT INTO fixed_advances (id, bank, credit_line_id, start_date, end_date, "
+                "continuation_date, currency, amount_original, interest_amount) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (row["id"], row["bank"], row["credit_line_id"],
+                 row["start_date"], row["end_date"], row["continuation_date"],
+                 row["currency"], row["amount_original"], row["interest_amount"]),
+            )
+            added += 1
+        except Exception:
+            errors += 1
+    return {"added": added, "errors": errors}
+
+
+def clear_all_data(conn):
+    """Delete all advances, credit lines, and banks (FK order).
+
+    Does NOT commit — caller is responsible for committing the transaction.
+    """
+    conn.execute("DELETE FROM fixed_advances")
+    conn.execute("DELETE FROM credit_lines")
+    conn.execute("DELETE FROM banks")
