@@ -6,7 +6,6 @@ __pycache__/
 *.xlsx
 .DS_Store
 .claude/
-TenorDash PRD.md
 ui-mockups.html
 LEARNING_GUIDE.md
 TenorDash.code-workspace
