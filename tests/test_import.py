@@ -204,5 +204,97 @@ class ValidationTests(unittest.TestCase):
         self.assertTrue(any("end_date" in e for e in errors))
 
 
+import importlib.util
+
+if importlib.util.find_spec("flask") is not None:
+    import app as app_module
+else:
+    app_module = None
+
+
+@unittest.skipUnless(app_module is not None, "flask not installed")
+class ImportApiTests(unittest.TestCase):
+    def setUp(self):
+        tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tmpdir.cleanup)
+        db_path = os.path.join(tmpdir.name, "test_import_api.db")
+        self._orig_db_path = db.DB_PATH
+        db.DB_PATH = db_path
+        self.addCleanup(setattr, db, "DB_PATH", self._orig_db_path)
+        db.init_db()
+
+        app_module.app.config["TESTING"] = True
+        app_module.app.config["PROPAGATE_EXCEPTIONS"] = False
+        self.client = app_module.app.test_client()
+
+        self.sample_file = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "Sample Data Synthetic.xlsx",
+        )
+
+    def test_import_page_loads(self):
+        res = self.client.get("/import")
+        self.assertEqual(res.status_code, 200)
+
+    def test_preview_with_valid_file(self):
+        with open(self.sample_file, "rb") as f:
+            res = self.client.post(
+                "/api/import/preview",
+                data={"file": (f, "test.xlsx")},
+                content_type="multipart/form-data",
+            )
+        self.assertEqual(res.status_code, 200)
+        body = res.get_json()
+        self.assertIn("banks", body)
+        self.assertIn("credit_lines", body)
+        self.assertIn("advances", body)
+        self.assertGreater(body["advances"]["count"], 0)
+
+    def test_preview_without_file_returns_400(self):
+        res = self.client.post("/api/import/preview")
+        self.assertEqual(res.status_code, 400)
+
+    def test_execute_append_mode(self):
+        with open(self.sample_file, "rb") as f:
+            res = self.client.post(
+                "/api/import/execute",
+                data={"file": (f, "test.xlsx"), "mode": "append"},
+                content_type="multipart/form-data",
+            )
+        self.assertEqual(res.status_code, 200)
+        body = res.get_json()
+        self.assertTrue(body["ok"])
+        self.assertGreater(body["banks"]["added"], 0)
+        self.assertGreater(body["credit_lines"]["added"], 0)
+        self.assertGreater(body["advances"]["added"], 0)
+
+    def test_execute_overwrite_mode(self):
+        # Insert some existing data
+        conn = db.get_db()
+        try:
+            conn.execute("INSERT INTO banks (bank_key, bank_name) VALUES (?, ?)", ("BXXX", "Old Bank"))
+            conn.commit()
+        finally:
+            conn.close()
+
+        with open(self.sample_file, "rb") as f:
+            res = self.client.post(
+                "/api/import/execute",
+                data={"file": (f, "test.xlsx"), "mode": "overwrite"},
+                content_type="multipart/form-data",
+            )
+        self.assertEqual(res.status_code, 200)
+        body = res.get_json()
+        self.assertTrue(body["ok"])
+
+        # Old bank should be gone
+        conn = db.get_db()
+        try:
+            old = conn.execute("SELECT * FROM banks WHERE bank_key = 'BXXX'").fetchone()
+            self.assertIsNone(old)
+        finally:
+            conn.close()
+
+
 if __name__ == "__main__":
     unittest.main()
