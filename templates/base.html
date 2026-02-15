@@ -71,6 +71,18 @@
     {% block content %}{% endblock %}
   </main>
 
+  <!-- Print-only FX rates footer (hidden on screen, shown on print) -->
+  {% if fx_rates is defined and fx_rates %}
+  <div class="print-fx-footer">
+    {% for curr in currencies %}
+      {% if curr.code != BASE_CURRENCY and fx_rates.get(curr.code) %}
+        <span>{{ curr.code }}/{{ BASE_CURRENCY }}: {{ "%.4f"|format(fx_rates[curr.code]) }}</span>
+      {% endif %}
+    {% endfor %}
+    <span class="print-fx-source">Source: ECB {{ ecb_date or '' }}</span>
+  </div>
+  {% endif %}
+
   <!-- Add Currency Modal (shared across all pages) -->
   <div class="modal-overlay" id="currency-modal">
     <div class="modal-box">
