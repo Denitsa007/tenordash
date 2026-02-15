@@ -36,8 +36,9 @@ Use this checklist before and after merging changes to `main`.
 - [ ] Verify continuation suggestion endpoint works from UI flow.
 - [ ] Verify CL capacity warning flow still works.
 - [ ] Verify currency add/delete flows behave as expected.
-- [ ] If export is implemented: confirm export file is generated/updated.
-- [ ] If print/PDF is implemented: confirm print action opens and output is readable.
+- [ ] Confirm `.xlsx` export file is generated/updated after saving an advance.
+- [ ] Confirm print action opens and output is readable (landscape, clean tables, FX footer).
+- [ ] Confirm Excel import preview and execute work with a test file.
 
 ## 5) Rollback Plan
 
