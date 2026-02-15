@@ -113,5 +113,96 @@ class BulkDbTests(unittest.TestCase):
             conn.close()
 
 
+import import_utils
+
+
+class ParseExcelTests(unittest.TestCase):
+    """Test parsing against the real sample file."""
+
+    SAMPLE_FILE = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)),
+        "Sample Data Synthetic.xlsx",
+    )
+
+    def test_parse_returns_three_entity_types(self):
+        result = import_utils.parse_excel(self.SAMPLE_FILE)
+        self.assertIn("banks", result)
+        self.assertIn("credit_lines", result)
+        self.assertIn("advances", result)
+
+    def test_credit_lines_parsed(self):
+        result = import_utils.parse_excel(self.SAMPLE_FILE)
+        cl = result["credit_lines"]
+        self.assertGreater(len(cl["rows"]), 0)
+        first = cl["rows"][0]
+        self.assertIn("id", first)
+        self.assertIn("bank_key", first)
+        self.assertIn("currency", first)
+        self.assertIn("amount", first)
+
+    def test_advances_parsed(self):
+        result = import_utils.parse_excel(self.SAMPLE_FILE)
+        adv = result["advances"]
+        self.assertGreater(len(adv["rows"]), 0)
+        first = adv["rows"][0]
+        self.assertIn("id", first)
+        self.assertIn("bank", first)
+        self.assertIn("credit_line_id", first)
+        self.assertIn("amount_original", first)
+
+    def test_banks_extracted(self):
+        result = import_utils.parse_excel(self.SAMPLE_FILE)
+        banks = result["banks"]
+        self.assertGreater(len(banks["rows"]), 0)
+        first = banks["rows"][0]
+        self.assertIn("bank_key", first)
+        self.assertIn("bank_name", first)
+
+    def test_dates_are_iso_strings(self):
+        result = import_utils.parse_excel(self.SAMPLE_FILE)
+        first_cl = result["credit_lines"]["rows"][0]
+        # Should be ISO format like "2024-01-01"
+        self.assertRegex(first_cl["start_date"], r"^\d{4}-\d{2}-\d{2}$")
+
+    def test_amounts_are_numeric(self):
+        result = import_utils.parse_excel(self.SAMPLE_FILE)
+        first_cl = result["credit_lines"]["rows"][0]
+        self.assertIsInstance(first_cl["amount"], (int, float))
+
+
+class ValidationTests(unittest.TestCase):
+    def test_validate_credit_line_missing_required_field(self):
+        row = {"id": "CL001", "bank_key": "B001", "currency": "CHF"}
+        errors = import_utils.validate_credit_line(row)
+        self.assertTrue(len(errors) > 0)
+
+    def test_validate_credit_line_valid(self):
+        row = {"id": "CL001", "bank_key": "B001", "currency": "CHF",
+               "amount": 100_000_000, "committed": "Yes", "start_date": "2026-01-01"}
+        errors = import_utils.validate_credit_line(row)
+        self.assertEqual(len(errors), 0)
+
+    def test_validate_advance_missing_required_field(self):
+        row = {"id": "FV0001", "bank": "Bank", "credit_line_id": "CL001"}
+        errors = import_utils.validate_advance(row)
+        self.assertTrue(len(errors) > 0)
+
+    def test_validate_advance_valid(self):
+        row = {"id": "FV0001", "bank": "Bank", "credit_line_id": "CL001",
+               "start_date": "2026-01-10", "end_date": "2026-02-10",
+               "continuation_date": "2026-02-05", "currency": "CHF",
+               "amount_original": 50_000_000, "interest_amount": 125_000.0}
+        errors = import_utils.validate_advance(row)
+        self.assertEqual(len(errors), 0)
+
+    def test_validate_advance_bad_date_order(self):
+        row = {"id": "FV0001", "bank": "Bank", "credit_line_id": "CL001",
+               "start_date": "2026-02-10", "end_date": "2026-01-10",
+               "continuation_date": "2026-01-07", "currency": "CHF",
+               "amount_original": 50_000_000, "interest_amount": 125_000.0}
+        errors = import_utils.validate_advance(row)
+        self.assertTrue(any("end_date" in e for e in errors))
+
+
 if __name__ == "__main__":
     unittest.main()
