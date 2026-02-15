@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% set active_page = "import" %}
+{% block title %}Import — TenorDash{% endblock %}
+
+{% block content %}
+<div class="topbar">
+  <h2>Import Data</h2>
+</div>
+
+<!-- Upload Section -->
+<div class="section">
+  <div class="section-header">
+    <h3>Upload Excel File</h3>
+  </div>
+  <div style="padding: 24px 20px;">
+    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+      Upload your Excel file (.xlsx or .xlsm) containing <strong>Credit Lines</strong> and
+      <strong>Fixed Advances</strong> sheets. Banks will be extracted automatically.
+    </p>
+    <form id="import-upload-form" style="display: flex; gap: 12px; align-items: end;">
+      <div class="form-group" style="flex: 1; margin-bottom: 0;">
+        <label>Excel File</label>
+        <input type="file" id="import-file" accept=".xlsx,.xlsm"
+               style="padding: 8px; border: 1px dashed var(--border-medium); border-radius: 4px; width: 100%;" />
+      </div>
+      <button type="submit" class="btn-primary" id="preview-btn">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="6" cy="6" r="4"/><path d="M9 9l3.5 3.5"/>
+        </svg>
+        Preview
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Preview Section (hidden until file parsed) -->
+<div id="preview-section" style="display: none;">
+
+  <!-- Existing Data Warning -->
+  <div id="existing-warning" class="alert-box" style="display: none;">
+    <div class="alert-title">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 3a1 1 0 011 1v4a1 1 0 01-2 0V5a1 1 0 011-1zm0 8a1 1 0 110-2 1 1 0 010 2z"/></svg>
+      Existing data detected
+    </div>
+    <p style="font-size: 12px; color: var(--berry-dark); margin-bottom: 12px;" id="existing-counts"></p>
+    <div style="display: flex; gap: 16px;">
+      <label style="font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+        <input type="radio" name="import-mode" value="append" checked /> Append to existing data
+      </label>
+      <label style="font-size: 13px; display: flex; align-items: center; gap: 6px; cursor: pointer;">
+        <input type="radio" name="import-mode" value="overwrite" /> Overwrite (replace all)
+      </label>
+    </div>
+  </div>
+
+  <!-- Banks Preview -->
+  <div class="section" id="banks-preview">
+    <div class="section-header">
+      <h3>Banks <span class="badge" id="banks-count" style="margin-left: 8px;"></span></h3>
+    </div>
+    <div id="banks-table-container" style="padding: 0;"></div>
+  </div>
+
+  <!-- Credit Lines Preview -->
+  <div class="section" id="cl-preview">
+    <div class="section-header">
+      <h3>Credit Lines <span class="badge" id="cl-count" style="margin-left: 8px;"></span></h3>
+    </div>
+    <div id="cl-table-container" style="padding: 0;"></div>
+    <div id="cl-errors" style="padding: 12px 20px; display: none;"></div>
+  </div>
+
+  <!-- Advances Preview -->
+  <div class="section" id="adv-preview">
+    <div class="section-header">
+      <h3>Fixed Advances <span class="badge" id="adv-count" style="margin-left: 8px;"></span></h3>
+    </div>
+    <div id="adv-table-container" style="padding: 0;"></div>
+    <div id="adv-errors" style="padding: 12px 20px; display: none;"></div>
+  </div>
+
+  <!-- Confirm / Cancel -->
+  <div style="display: flex; gap: 12px; margin-top: 20px;">
+    <button class="btn-primary" id="confirm-btn" onclick="executeImport()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 7 5.5 10.5 12 4"/></svg>
+      Confirm Import
+    </button>
+    <button class="btn-secondary" onclick="resetImport()">Cancel</button>
+  </div>
+</div>
+
+<!-- Results Section (hidden until import done) -->
+<div id="results-section" style="display: none;">
+  <div class="section">
+    <div class="section-header">
+      <h3>Import Complete</h3>
+    </div>
+    <div style="padding: 20px;" id="results-body"></div>
+  </div>
+  <div style="margin-top: 16px;">
+    <a href="/import" class="btn-secondary">Import Another File</a>
+    <a href="/" class="btn-primary" style="margin-left: 8px;">Go to Dashboard</a>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentFile = null;
+
+document.getElementById('import-upload-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const fileInput = document.getElementById('import-file');
+  if (!fileInput.files.length) return;
+  currentFile = fileInput.files[0];
+
+  const btn = document.getElementById('preview-btn');
+  btn.disabled = true;
+  btn.textContent = 'Parsing...';
+
+  const formData = new FormData();
+  formData.append('file', currentFile);
+
+  try {
+    const res = await fetch('/api/import/preview', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!data.ok) {
+      alert(data.error || 'Failed to parse file');
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="4"/><path d="M9 9l3.5 3.5"/></svg> Preview';
+      return;
+    }
+    showPreview(data);
+  } catch (err) {
+    alert('Upload failed: ' + err.message);
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="4"/><path d="M9 9l3.5 3.5"/></svg> Preview';
+});
+
+function showPreview(data) {
+  document.getElementById('preview-section').style.display = 'block';
+
+  // Existing data warning
+  const ex = data.existing;
+  const total = ex.banks + ex.credit_lines + ex.advances;
+  const warningEl = document.getElementById('existing-warning');
+  if (total > 0) {
+    document.getElementById('existing-counts').textContent =
+      `Database currently has ${ex.banks} banks, ${ex.credit_lines} credit lines, and ${ex.advances} advances.`;
+    warningEl.style.display = 'block';
+  } else {
+    warningEl.style.display = 'none';
+  }
+
+  // Banks
+  document.getElementById('banks-count').textContent = data.banks.count;
+  renderTable('banks-table-container', data.banks.rows,
+    ['bank_key', 'bank_name'], ['Bank Key', 'Bank Name']);
+
+  // Credit Lines
+  document.getElementById('cl-count').textContent = data.credit_lines.count;
+  renderTable('cl-table-container', data.credit_lines.rows,
+    ['id', 'bank_key', 'currency', 'amount', 'committed', 'start_date'],
+    ['ID', 'Bank Key', 'Currency', 'Amount', 'Committed', 'Start Date']);
+  renderErrors('cl-errors', data.credit_lines.errors);
+
+  // Advances
+  document.getElementById('adv-count').textContent = data.advances.count;
+  renderTable('adv-table-container', data.advances.rows,
+    ['id', 'bank', 'credit_line_id', 'currency', 'amount_original', 'start_date', 'end_date'],
+    ['ID', 'Bank', 'Credit Line', 'Currency', 'Amount', 'Start', 'End']);
+  renderErrors('adv-errors', data.advances.errors);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderTable(containerId, rows, fields, headers) {
+  const container = document.getElementById(containerId);
+  if (!rows.length) {
+    container.innerHTML = '<p style="padding: 16px; color: var(--text-muted); font-size: 13px;">No data found</p>';
+    return;
+  }
+  let html = '<table class="data-table"><thead><tr>';
+  headers.forEach(h => { html += '<th>' + escapeHtml(h) + '</th>'; });
+  html += '</tr></thead><tbody>';
+  rows.forEach(row => {
+    html += '<tr>';
+    fields.forEach(f => {
+      let val = row[f];
+      if (typeof val === 'number' && val > 999) val = val.toLocaleString();
+      html += '<td>' + (val != null ? escapeHtml(String(val)) : '&mdash;') + '</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function renderErrors(containerId, errors) {
+  const el = document.getElementById(containerId);
+  if (!errors || !errors.length) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  let html = '<div class="currency-msg warn" style="display:block">';
+  html += '<strong>' + errors.length + ' row(s) with errors (skipped):</strong><br>';
+  errors.forEach(e => {
+    html += 'Row ' + e.row + ': ' + e.messages.join(', ') + '<br>';
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+async function executeImport() {
+  if (!currentFile) return;
+  const mode = document.querySelector('input[name="import-mode"]:checked')?.value || 'append';
+  const btn = document.getElementById('confirm-btn');
+  btn.disabled = true;
+  btn.textContent = 'Importing...';
+
+  const formData = new FormData();
+  formData.append('file', currentFile);
+  formData.append('mode', mode);
+
+  try {
+    const res = await fetch('/api/import/execute', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!data.ok) {
+      alert(data.error || 'Import failed');
+      btn.disabled = false;
+      btn.textContent = 'Confirm Import';
+      return;
+    }
+    showResults(data);
+  } catch (err) {
+    alert('Import failed: ' + err.message);
+    btn.disabled = false;
+    btn.textContent = 'Confirm Import';
+  }
+}
+
+function showResults(data) {
+  document.getElementById('preview-section').style.display = 'none';
+  document.getElementById('results-section').style.display = 'block';
+
+  const body = document.getElementById('results-body');
+  let html = '<table class="data-table"><thead><tr><th>Entity</th><th>Added</th><th>Skipped / Errors</th></tr></thead><tbody>';
+  html += '<tr><td>Banks</td><td>' + data.banks.added + '</td><td>' + (data.banks.skipped || 0) + ' skipped</td></tr>';
+  html += '<tr><td>Credit Lines</td><td>' + data.credit_lines.added + '</td><td>' + (data.credit_lines.errors || 0) + ' errors</td></tr>';
+  html += '<tr><td>Fixed Advances</td><td>' + data.advances.added + '</td><td>' + (data.advances.errors || 0) + ' errors</td></tr>';
+  html += '</tbody></table>';
+  body.innerHTML = html;
+}
+
+function resetImport() {
+  document.getElementById('preview-section').style.display = 'none';
+  document.getElementById('import-file').value = '';
+  currentFile = null;
+}
+</script>
+{% endblock %}
