@@ -682,7 +682,9 @@ def import_execute():
             banks_result = db.bulk_insert_banks(conn, result["banks"]["rows"])
             cl_result = db.bulk_insert_credit_lines(conn, result["credit_lines"]["rows"])
             adv_result = db.bulk_insert_advances(conn, result["advances"]["rows"])
+            conn.commit()
         except Exception as e:
+            conn.rollback()
             return jsonify({"ok": False, "error": f"Import failed: {e}"}), 500
 
     _try_export()
