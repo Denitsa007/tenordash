@@ -11,6 +11,8 @@ A local Flask web app for tracking treasury fixed advance borrowings — replaci
 - **Dynamic Currency Management** — Add new currencies inline from any form via a "+" button; ECB validation, auto-assigned badge colors from a 12-color palette. Ships with CHF, CZK, EUR, GBP, PLN, USD; new currencies (e.g. JPY, SEK) can be added at any time
 - **Continuation Date Auto-Suggest** — 3 business days before maturity, editable
 - **ECB FX Rates** — Dynamically fetches cross rates from ECB Data API for all active currencies; displayed in the navigation sidebar on every page; cached daily with automatic cache reset when currencies change
+- **Excel Import** — Import historical data from Excel files with preview, validation, and append/overwrite modes
+- **Print / PDF Export** — Browser-native print with a dedicated print stylesheet (landscape, clean tables, FX rates footer)
 - **Auto-Export for Power BI** — `.xlsx` export triggers automatically on every advance/credit line save; configurable export path via Settings
 - **Settings** — Configurable display unit (full / thousands / millions), upcoming continuations display limit, and export path with folder browser
 - **Locale-Aware Formatting** — Amount fields use the browser's locale for thousands/decimal separators
@@ -54,9 +56,10 @@ The database (`fixed_advances.db`) is created automatically on first run.
 ├── helpers.py          # Date math, interest rate calc, business-day logic
 ├── ecb.py              # ECB Data API client (dynamic currencies, daily cache)
 ├── export.py           # Auto-export .xlsx for Power BI (advances + credit lines)
+├── import_utils.py     # Excel parser and validation for bulk import
 ├── config.py           # Paths, business rules, base currency
 ├── static/
-│   ├── style.css       # Full UI styling
+│   ├── style.css       # Full UI styling (including @media print)
 │   ├── app.js          # Settings modal, folder browser, shared handlers
 │   └── logo.png        # Monogram
 ├── templates/
@@ -64,14 +67,16 @@ The database (`fixed_advances.db`) is created automatically on first run.
 │   ├── dashboard.html  # Summary cards, alerts, continuations, instruments
 │   ├── advances.html   # Advances list + slide-out form
 │   ├── credit_lines.html
-│   └── banks.html
+│   ├── banks.html
+│   └── import.html     # Excel import with preview and validation
 ├── tests/
-│   ├── test_api_contract.py        # Route/endpoint tests
+│   ├── test_api_contract.py          # Route/endpoint tests
 │   ├── test_continuation_calendar.py # Calendar grid + navigation tests
-│   ├── test_ecb.py                 # API resilience tests
-│   ├── test_export.py              # .xlsx export tests
-│   ├── test_helpers.py             # Business logic tests
-│   └── test_settings.py            # Settings API + display filter tests
+│   ├── test_ecb.py                   # API resilience tests
+│   ├── test_export.py                # .xlsx export tests
+│   ├── test_helpers.py               # Business logic tests
+│   ├── test_import.py                # Excel import tests
+│   └── test_settings.py              # Settings API + display filter tests
 └── TenorDash PRD.md  # Product requirements
 ```
 
@@ -88,7 +93,13 @@ The database (`fixed_advances.db`) is created automatically on first run.
 
 ## Status
 
-Phase 1 (core CRUD + dashboard) and Phase 2 (`.xlsx` auto-export for Power BI, settings) are complete.
+**v1.0.0** — All planned features are complete:
+
+- Phase 1: Core CRUD + dashboard
+- Phase 2: `.xlsx` auto-export for Power BI, settings
+- Excel import from existing workbooks
+- Print / PDF export via browser print
+- Cross-platform launcher scripts (macOS + Windows)
 
 ## Release Process
 
