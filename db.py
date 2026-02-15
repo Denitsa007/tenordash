@@ -516,7 +516,10 @@ def get_cl_utilization(conn):
 # ── Bulk Import ──
 
 def bulk_insert_banks(conn, rows):
-    """Insert banks, skipping duplicates. Returns {added, skipped}."""
+    """Insert banks, skipping duplicates. Returns {added, skipped}.
+
+    Does NOT commit — caller is responsible for committing the transaction.
+    """
     added = 0
     skipped = 0
     for row in rows:
@@ -531,12 +534,14 @@ def bulk_insert_banks(conn, rows):
                 (row["bank_key"], row["bank_name"]),
             )
             added += 1
-    conn.commit()
     return {"added": added, "skipped": skipped}
 
 
 def bulk_insert_credit_lines(conn, rows):
-    """Insert credit lines. Returns {added, errors}."""
+    """Insert credit lines. Returns {added, errors}.
+
+    Does NOT commit — caller is responsible for committing the transaction.
+    """
     added = 0
     errors = 0
     for row in rows:
@@ -552,12 +557,14 @@ def bulk_insert_credit_lines(conn, rows):
             added += 1
         except Exception:
             errors += 1
-    conn.commit()
     return {"added": added, "errors": errors}
 
 
 def bulk_insert_advances(conn, rows):
-    """Insert fixed advances. Returns {added, errors}."""
+    """Insert fixed advances. Returns {added, errors}.
+
+    Does NOT commit — caller is responsible for committing the transaction.
+    """
     added = 0
     errors = 0
     for row in rows:
@@ -573,13 +580,14 @@ def bulk_insert_advances(conn, rows):
             added += 1
         except Exception:
             errors += 1
-    conn.commit()
     return {"added": added, "errors": errors}
 
 
 def clear_all_data(conn):
-    """Delete all advances, credit lines, and banks (FK order)."""
+    """Delete all advances, credit lines, and banks (FK order).
+
+    Does NOT commit — caller is responsible for committing the transaction.
+    """
     conn.execute("DELETE FROM fixed_advances")
     conn.execute("DELETE FROM credit_lines")
     conn.execute("DELETE FROM banks")
-    conn.commit()
