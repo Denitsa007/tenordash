@@ -24,7 +24,20 @@ A local Flask web app for tracking treasury fixed advance borrowings — replaci
 
 ## Getting Started
 
+### Quick Launch (recommended)
+
+**macOS:** Double-click `run-tenordash.command` in Finder.
+
+**Windows:** Double-click `run-tenordash.bat` in Explorer.
+
+The script will set up a virtual environment, install dependencies, open your browser, and start the server. Close the terminal window or press `Ctrl+C` to stop.
+
+### Manual Setup
+
 ```bash
+python3 -m venv .venv
+source .venv/bin/activate        # macOS/Linux
+# .venv\Scripts\activate.bat     # Windows
 pip install -r requirements.txt
 python3 app.py
 ```
