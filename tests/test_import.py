@@ -116,13 +116,17 @@ class BulkDbTests(unittest.TestCase):
 import import_utils
 
 
+_SAMPLE_FILE = os.path.join(
+    os.path.dirname(os.path.dirname(__file__)),
+    "Sample Data Synthetic.xlsx",
+)
+
+
+@unittest.skipUnless(os.path.exists(_SAMPLE_FILE), "sample Excel file not available")
 class ParseExcelTests(unittest.TestCase):
     """Test parsing against the real sample file."""
 
-    SAMPLE_FILE = os.path.join(
-        os.path.dirname(os.path.dirname(__file__)),
-        "Sample Data Synthetic.xlsx",
-    )
+    SAMPLE_FILE = _SAMPLE_FILE
 
     def test_parse_returns_three_entity_types(self):
         result = import_utils.parse_excel(self.SAMPLE_FILE)
@@ -213,6 +217,7 @@ else:
 
 
 @unittest.skipUnless(app_module is not None, "flask not installed")
+@unittest.skipUnless(os.path.exists(_SAMPLE_FILE), "sample Excel file not available")
 class ImportApiTests(unittest.TestCase):
     def setUp(self):
         tmpdir = tempfile.TemporaryDirectory()
@@ -227,10 +232,7 @@ class ImportApiTests(unittest.TestCase):
         app_module.app.config["PROPAGATE_EXCEPTIONS"] = False
         self.client = app_module.app.test_client()
 
-        self.sample_file = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)),
-            "Sample Data Synthetic.xlsx",
-        )
+        self.sample_file = _SAMPLE_FILE
 
     def test_import_page_loads(self):
         res = self.client.get("/import")
