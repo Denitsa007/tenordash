@@ -17,6 +17,24 @@ A local Flask web app for tracking treasury fixed advance borrowings — replaci
 - **Settings** — Configurable display unit (full / thousands / millions), upcoming continuations display limit, and export path with folder browser
 - **Locale-Aware Formatting** — Amount fields use the browser's locale for thousands/decimal separators
 
+## Screenshots
+
+### Dashboard
+Summary cards, active instruments, continuation alerts, and credit line utilization — all on one page.
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+### Fixed Advances
+Full list with currency filters, sortable columns, and inline status. The slide-out form shows live calculation preview.
+
+![Fixed Advances](docs/screenshots/advances.png)
+![New Advance Form](docs/screenshots/advance-form.png)
+
+### Credit Lines
+Borrowing facilities with Active/Archived filtering and edit/archive actions.
+
+![Credit Lines](docs/screenshots/credit-lines.png)
+
 ## Tech Stack
 
 - **Python / Flask** — backend and routing
