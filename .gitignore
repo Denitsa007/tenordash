@@ -1,12 +1,25 @@
+# Python
 .venv/
 __pycache__/
 *.pyc
+.pytest_cache/
+
+# Data
 *.db
 *.xlsm
 *.xlsx
+
+# OS / IDE
 .DS_Store
-.claude/
-ui-mockups.html
-LEARNING_GUIDE.md
 TenorDash.code-workspace
+
+# Claude
+.claude/
 .worktrees/
+
+# Working docs
+docs/plans/
+TenorDash PRD.md
+RELEASE_CHECKLIST.md
+LEARNING_GUIDE.md
+ui-mockups.html
