@@ -31,6 +31,19 @@ IS_PRODUCTION = (
 )
 BROWSE_DIRS_ENABLED = not IS_PRODUCTION
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+HSTS_POLICY = "max-age=31536000; includeSubDomains"
+CSP_POLICY = "; ".join([
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data:",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+])
 
 app = Flask(__name__)
 app.config["DEMO_MODE"] = DEMO_MODE
@@ -84,6 +97,13 @@ def add_security_headers(response):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Content-Security-Policy", CSP_POLICY)
+
+    # Render forwards protocol in X-Forwarded-Proto; only send HSTS on HTTPS.
+    forwarded_proto = request.headers.get("X-Forwarded-Proto", "")
+    first_proto = forwarded_proto.split(",")[0].strip().lower() if forwarded_proto else ""
+    if request.is_secure or first_proto == "https":
+        response.headers.setdefault("Strict-Transport-Security", HSTS_POLICY)
     return response
 
 
