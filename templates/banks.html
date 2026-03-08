@@ -7,11 +7,11 @@
 <div class="topbar">
   <h2>Banks</h2>
   <div class="topbar-actions">
-    <button class="btn-secondary" onclick="window.print()">
+    <button class="btn-secondary" id="print-btn">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3.5 5V1.5h7V5"/><rect x="1.5" y="5" width="11" height="5.5" rx="1"/><path d="M3.5 8.5h7v4h-7z"/></svg>
       Print
     </button>
-    <button class="btn-primary" onclick="openBankForm()">
+    <button class="btn-primary" id="new-bank-btn">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>
       Add Bank
     </button>
@@ -34,8 +34,8 @@
         <td>{{ bank.bank_name }}</td>
         <td>
           <div class="row-actions">
-            <button onclick="editBank('{{ bank.bank_key }}', '{{ bank.bank_name }}')" title="Edit">&#9998;</button>
-            <button class="delete" onclick="deleteBank('{{ bank.bank_key }}')" title="Delete">&times;</button>
+            <button class="action-edit" title="Edit">&#9998;</button>
+            <button class="delete action-delete" title="Delete">&times;</button>
           </div>
         </td>
       </tr>
@@ -57,7 +57,7 @@
   <div class="modal-box" style="width: 400px;">
     <h3>
       <span id="bank-view-title"></span>
-      <button class="panel-close" onclick="closeBankView()">&times;</button>
+      <button class="panel-close" id="bank-view-close-btn">&times;</button>
     </h3>
     <div class="panel-view">
       <div class="detail-grid">
@@ -71,7 +71,7 @@
         </div>
       </div>
       <div class="form-actions">
-        <button type="button" class="btn-secondary" onclick="closeBankView()">Close</button>
+        <button type="button" class="btn-secondary" id="bank-view-close-footer">Close</button>
         <button type="button" class="btn-primary" id="bank-view-edit-btn">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.5 1.5l2 2L4 12H2v-2z"/></svg>
           Edit
@@ -86,9 +86,9 @@
   <div class="modal-box" style="width: 400px;">
     <h3>
       <span id="bank-form-title">Add Bank</span>
-      <button class="panel-close" onclick="closeBankForm()">&times;</button>
+      <button class="panel-close" id="bank-form-close-btn">&times;</button>
     </h3>
-    <form id="bank-form" onsubmit="saveBank(event)">
+    <form id="bank-form">
       <div class="form-group">
         <label>Bank Key</label>
         <input type="text" id="bank-key" required placeholder="e.g. B001" />
@@ -98,7 +98,7 @@
         <input type="text" id="bank-name" required placeholder="e.g. Bank A" />
       </div>
       <div class="form-actions">
-        <button type="button" class="btn-secondary" onclick="closeBankForm()">Cancel</button>
+        <button type="button" class="btn-secondary" id="bank-form-cancel-btn">Cancel</button>
         <button type="submit" class="btn-primary">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 7 5.5 10.5 12 4"/></svg>
           Save
@@ -110,7 +110,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 let currentViewBankKey = null;
 
 function openBankForm(key, name) {
@@ -151,15 +151,15 @@ document.getElementById('bank-view-edit-btn').addEventListener('click', function
   }
 });
 
-// Row click → open view mode (skip clicks on action buttons)
+// Row click → open view mode; action button delegation for edit/delete
 document.getElementById('banks-table').addEventListener('click', function(e) {
-  if (e.target.closest('.row-actions')) return;
   const row = e.target.closest('tr[data-key]');
-  if (row) {
-    const key = row.dataset.key;
-    const name = row.children[1].textContent;
-    viewBank(key, name);
-  }
+  if (!row) return;
+  const key = row.dataset.key;
+  const name = row.children[1].textContent;
+  if (e.target.closest('.action-edit')) { editBank(key, name); return; }
+  if (e.target.closest('.action-delete')) { deleteBank(key); return; }
+  if (!e.target.closest('.row-actions')) viewBank(key, name);
 });
 
 async function saveBank(e) {
@@ -181,5 +181,14 @@ async function deleteBank(key) {
   const res = await fetch('/banks/' + key, { method: 'DELETE' });
   if (res.ok) location.reload();
 }
+
+// Bind event handlers
+document.getElementById('print-btn').addEventListener('click', function() { window.print(); });
+document.getElementById('new-bank-btn').addEventListener('click', function() { openBankForm(); });
+document.getElementById('bank-view-close-btn').addEventListener('click', closeBankView);
+document.getElementById('bank-view-close-footer').addEventListener('click', closeBankView);
+document.getElementById('bank-form-close-btn').addEventListener('click', closeBankForm);
+document.getElementById('bank-form-cancel-btn').addEventListener('click', closeBankForm);
+document.getElementById('bank-form').addEventListener('submit', saveBank);
 </script>
 {% endblock %}

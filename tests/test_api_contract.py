@@ -91,6 +91,26 @@ class ApiContractTests(unittest.TestCase):
         res = self.client.get("/api/check-cl-capacity?cl_id=CL001&amount=not-a-number")
         self.assertEqual(res.status_code, 400)
 
+    def test_security_headers_present(self):
+        res = self.client.get("/")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.headers.get("X-Content-Type-Options"), "nosniff")
+        self.assertEqual(res.headers.get("X-Frame-Options"), "DENY")
+        self.assertEqual(res.headers.get("Referrer-Policy"), "strict-origin-when-cross-origin")
+        csp = res.headers.get("Content-Security-Policy", "")
+        self.assertIn("default-src 'self'", csp)
+        self.assertRegex(csp, r"'nonce-[A-Za-z0-9_-]+'")
+        self.assertNotIn("'unsafe-inline'", csp.split("script-src")[1].split(";")[0])
+        self.assertIsNone(res.headers.get("Strict-Transport-Security"))
+
+    def test_hsts_present_for_https_forwarded_proto(self):
+        res = self.client.get("/", headers={"X-Forwarded-Proto": "https"})
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(
+            res.headers.get("Strict-Transport-Security"),
+            "max-age=31536000; includeSubDomains",
+        )
+
     def test_currency_api_invalid_and_duplicate(self):
         res = self.client.post("/api/currencies", json={"code": "US"})
         self.assertEqual(res.status_code, 400)

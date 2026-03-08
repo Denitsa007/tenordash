@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from datetime import date
 import os
 import re
+import secrets
 
 from flask import Flask, g, jsonify, render_template, request
 try:
@@ -31,6 +32,19 @@ IS_PRODUCTION = (
 )
 BROWSE_DIRS_ENABLED = not IS_PRODUCTION
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+HSTS_POLICY = "max-age=31536000; includeSubDomains"
+_CSP_TEMPLATE = "; ".join([
+    "default-src 'self'",
+    "script-src 'self' 'nonce-{nonce}'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data:",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+])
 
 app = Flask(__name__)
 app.config["DEMO_MODE"] = DEMO_MODE
@@ -67,6 +81,16 @@ def rate_limit(limit_value):
 
 
 @app.before_request
+def generate_csp_nonce():
+    g.csp_nonce = secrets.token_urlsafe(16)
+
+
+@app.context_processor
+def inject_csp_nonce():
+    return {"csp_nonce": getattr(g, "csp_nonce", "")}
+
+
+@app.before_request
 def enforce_demo_read_only():
     if not DEMO_MODE:
         return None
@@ -84,6 +108,16 @@ def add_security_headers(response):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    nonce = getattr(g, "csp_nonce", "")
+    response.headers.setdefault(
+        "Content-Security-Policy", _CSP_TEMPLATE.format(nonce=nonce)
+    )
+
+    # Render forwards protocol in X-Forwarded-Proto; only send HSTS on HTTPS.
+    forwarded_proto = request.headers.get("X-Forwarded-Proto", "")
+    first_proto = forwarded_proto.split(",")[0].strip().lower() if forwarded_proto else ""
+    if request.is_secure or first_proto == "https":
+        response.headers.setdefault("Strict-Transport-Security", HSTS_POLICY)
     return response
 
 
