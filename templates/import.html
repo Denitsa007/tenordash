@@ -81,11 +81,11 @@
 
   <!-- Confirm / Cancel -->
   <div style="display: flex; gap: 12px; margin-top: 20px;">
-    <button class="btn-primary" id="confirm-btn" onclick="executeImport()">
+    <button class="btn-primary" id="confirm-btn">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 7 5.5 10.5 12 4"/></svg>
       Confirm Import
     </button>
-    <button class="btn-secondary" onclick="resetImport()">Cancel</button>
+    <button class="btn-secondary" id="import-cancel-btn">Cancel</button>
   </div>
 </div>
 
@@ -106,7 +106,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 let currentFile = null;
 
 document.getElementById('import-upload-form').addEventListener('submit', async function(e) {
@@ -261,5 +261,9 @@ function resetImport() {
   document.getElementById('import-file').value = '';
   currentFile = null;
 }
+
+// Bind event handlers
+document.getElementById('confirm-btn').addEventListener('click', executeImport);
+document.getElementById('import-cancel-btn').addEventListener('click', resetImport);
 </script>
 {% endblock %}

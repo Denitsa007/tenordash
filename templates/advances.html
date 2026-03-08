@@ -7,11 +7,11 @@
 <div class="topbar">
   <h2>Fixed Advances</h2>
   <div class="topbar-actions">
-    <button class="btn-secondary" onclick="window.print()">
+    <button class="btn-secondary" id="print-btn">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3.5 5V1.5h7V5"/><rect x="1.5" y="5" width="11" height="5.5" rx="1"/><path d="M3.5 8.5h7v4h-7z"/></svg>
       Print
     </button>
-    <button class="btn-primary" onclick="openAdvForm()">
+    <button class="btn-primary" id="new-adv-btn">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>
       New Advance
     </button>
@@ -22,10 +22,10 @@
   <div class="section-header">
     <h3>All Advances ({{ advances|length }})</h3>
     <div class="filter-pills">
-      <span class="pill active" data-filter="all" onclick="filterAdvances('all', this)">All</span>
-      <span class="pill" data-filter="active" onclick="filterAdvances('active', this)">Active</span>
+      <span class="pill active" data-filter="all">All</span>
+      <span class="pill" data-filter="active">Active</span>
       {% for curr in currencies %}
-      <span class="pill" data-filter="{{ curr.code }}" onclick="filterAdvances('{{ curr.code }}', this)">{{ curr.code }}</span>
+      <span class="pill" data-filter="{{ curr.code }}">{{ curr.code }}</span>
       {% endfor %}
     </div>
   </div>
@@ -62,8 +62,8 @@
         <td><span class="badge {{ 'badge-active' if adv.active else 'badge-expired' }}">{{ 'Active' if adv.active else 'Expired' }}</span></td>
         <td>
           <div class="row-actions">
-            <button onclick="editAdv('{{ adv.id }}')" title="Edit">&#9998;</button>
-            <button class="delete" onclick="deleteAdv('{{ adv.id }}')" title="Delete">&times;</button>
+            <button class="action-edit" title="Edit">&#9998;</button>
+            <button class="delete action-delete" title="Delete">&times;</button>
           </div>
         </td>
       </tr>
@@ -85,7 +85,7 @@
   <div class="modal-box" style="width: 480px;">
     <h3>
       <span id="adv-view-title"></span>
-      <button class="panel-close" onclick="closeAdvView()">&times;</button>
+      <button class="panel-close" id="adv-view-close-btn">&times;</button>
     </h3>
     <div class="panel-view">
       <div class="detail-grid">
@@ -137,7 +137,7 @@
         </div>
       </div>
       <div class="form-actions">
-        <button type="button" class="btn-secondary" onclick="closeAdvView()">Close</button>
+        <button type="button" class="btn-secondary" id="adv-view-close-footer">Close</button>
         <button type="button" class="btn-primary" id="adv-view-edit-btn">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.5 1.5l2 2L4 12H2v-2z"/></svg>
           Edit
@@ -152,15 +152,15 @@
   <div class="modal-box" style="width: 520px; max-height: 90vh; overflow-y: auto;">
     <h3>
       <span id="adv-panel-title">New Fixed Advance</span>
-      <button class="panel-close" onclick="closeAdvForm()">&times;</button>
+      <button class="panel-close" id="adv-form-close-btn">&times;</button>
     </h3>
-    <form id="adv-form" onsubmit="saveAdv(event)">
+    <form id="adv-form">
       <input type="hidden" id="adv-edit-id" value="" />
 
       <div class="form-row">
         <div class="form-group">
           <label>Bank</label>
-          <select id="adv-bank" required onchange="syncCLFromBank()">
+          <select id="adv-bank" required>
             <option value="">Select bank...</option>
             {% for bank in banks %}
             <option value="{{ bank.bank_name }}">{{ bank.bank_name }}</option>
@@ -169,7 +169,7 @@
         </div>
         <div class="form-group">
           <label>Credit Line</label>
-          <select id="adv-cl" required onchange="syncBankFromCL(); dismissClWarning()">
+          <select id="adv-cl" required>
             <option value="">Select...</option>
             {% for cl in lines %}
             <option value="{{ cl.id }}" data-bank="{{ cl.bank_name }}">{{ cl.id }} — {{ cl.description or cl.bank_name }}</option>
@@ -186,7 +186,7 @@
             <option value="{{ curr.code }}">{{ curr.code }}</option>
             {% endfor %}
           </select>
-          <button type="button" class="btn-add-currency" onclick="openCurrencyModal()" title="Add currency">+</button>
+          <button type="button" class="btn-add-currency" id="adv-add-currency-btn" title="Add currency">+</button>
         </div>
       </div>
 
@@ -197,7 +197,7 @@
         </div>
         <div class="form-group">
           <label>End Date</label>
-          <input type="date" id="adv-end" required onchange="suggestContinuation()" />
+          <input type="date" id="adv-end" required />
         </div>
       </div>
 
@@ -213,11 +213,11 @@
       <div class="form-row">
         <div class="form-group">
           <label>Amount</label>
-          <input type="text" id="adv-amount" required placeholder="e.g. 50,000,000" oninput="formatAmountField(this); updateCalcPreview(); dismissClWarning()" inputmode="numeric" />
+          <input type="text" id="adv-amount" required placeholder="e.g. 50,000,000" inputmode="numeric" />
         </div>
         <div class="form-group">
           <label>Interest Amount</label>
-          <input type="text" id="adv-interest" required placeholder="e.g. 196,527.78" oninput="formatAmountField(this, true); updateCalcPreview()" inputmode="decimal" />
+          <input type="text" id="adv-interest" required placeholder="e.g. 196,527.78" inputmode="decimal" />
         </div>
       </div>
 
@@ -238,7 +238,7 @@
       </div>
 
       <div class="form-actions">
-        <button type="button" class="btn-secondary" onclick="closeAdvForm()">Cancel</button>
+        <button type="button" class="btn-secondary" id="adv-form-cancel-btn">Cancel</button>
         <button type="submit" class="btn-primary">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 7 5.5 10.5 12 4"/></svg>
           Save Advance
@@ -251,7 +251,7 @@
 
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 const parseNum = window.TDNumber.parseLocaleNumber;
 
 function formatAmountField(el, allowDecimals) {
@@ -372,11 +372,13 @@ document.getElementById('adv-view-edit-btn').addEventListener('click', function(
   }
 });
 
-// Row click → open view mode (skip clicks on action buttons)
+// Row click → open view mode; action button delegation for edit/delete
 document.getElementById('advances-table').addEventListener('click', function(e) {
-  if (e.target.closest('.row-actions')) return;
   const row = e.target.closest('tr[data-id]');
-  if (row) viewAdv(row.dataset.id);
+  if (!row) return;
+  if (e.target.closest('.action-edit')) { editAdv(row.dataset.id); return; }
+  if (e.target.closest('.action-delete')) { deleteAdv(row.dataset.id); return; }
+  if (!e.target.closest('.row-actions')) viewAdv(row.dataset.id);
 });
 
 let clWarningAcknowledged = false;
@@ -546,5 +548,29 @@ function filterAdvances(filter, pill) {
     }
   });
 }
+
+// Bind event handlers
+document.getElementById('print-btn').addEventListener('click', function() { window.print(); });
+document.getElementById('new-adv-btn').addEventListener('click', openAdvForm);
+document.querySelectorAll('.filter-pills .pill[data-filter]').forEach(function(pill) {
+  pill.addEventListener('click', function() { filterAdvances(pill.dataset.filter, pill); });
+});
+document.getElementById('adv-view-close-btn').addEventListener('click', closeAdvView);
+document.getElementById('adv-view-close-footer').addEventListener('click', closeAdvView);
+document.getElementById('adv-form-close-btn').addEventListener('click', closeAdvForm);
+document.getElementById('adv-form-cancel-btn').addEventListener('click', closeAdvForm);
+document.getElementById('adv-form').addEventListener('submit', saveAdv);
+document.getElementById('adv-bank').addEventListener('change', syncCLFromBank);
+document.getElementById('adv-cl').addEventListener('change', function() {
+  syncBankFromCL(); dismissClWarning();
+});
+document.getElementById('adv-add-currency-btn').addEventListener('click', openCurrencyModal);
+document.getElementById('adv-end').addEventListener('change', suggestContinuation);
+document.getElementById('adv-amount').addEventListener('input', function() {
+  formatAmountField(this); updateCalcPreview(); dismissClWarning();
+});
+document.getElementById('adv-interest').addEventListener('input', function() {
+  formatAmountField(this, true); updateCalcPreview();
+});
 </script>
 {% endblock %}

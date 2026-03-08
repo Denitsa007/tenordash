@@ -2,6 +2,7 @@ from contextlib import contextmanager
 from datetime import date
 import os
 import re
+import secrets
 
 from flask import Flask, g, jsonify, render_template, request
 try:
@@ -32,9 +33,9 @@ IS_PRODUCTION = (
 BROWSE_DIRS_ENABLED = not IS_PRODUCTION
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 HSTS_POLICY = "max-age=31536000; includeSubDomains"
-CSP_POLICY = "; ".join([
+_CSP_TEMPLATE = "; ".join([
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
+    "script-src 'self' 'nonce-{nonce}'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data:",
@@ -80,6 +81,16 @@ def rate_limit(limit_value):
 
 
 @app.before_request
+def generate_csp_nonce():
+    g.csp_nonce = secrets.token_urlsafe(16)
+
+
+@app.context_processor
+def inject_csp_nonce():
+    return {"csp_nonce": getattr(g, "csp_nonce", "")}
+
+
+@app.before_request
 def enforce_demo_read_only():
     if not DEMO_MODE:
         return None
@@ -97,7 +108,10 @@ def add_security_headers(response):
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
-    response.headers.setdefault("Content-Security-Policy", CSP_POLICY)
+    nonce = getattr(g, "csp_nonce", "")
+    response.headers.setdefault(
+        "Content-Security-Policy", _CSP_TEMPLATE.format(nonce=nonce)
+    )
 
     # Render forwards protocol in X-Forwarded-Proto; only send HSTS on HTTPS.
     forwarded_proto = request.headers.get("X-Forwarded-Proto", "")

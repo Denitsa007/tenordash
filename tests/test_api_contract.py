@@ -97,7 +97,10 @@ class ApiContractTests(unittest.TestCase):
         self.assertEqual(res.headers.get("X-Content-Type-Options"), "nosniff")
         self.assertEqual(res.headers.get("X-Frame-Options"), "DENY")
         self.assertEqual(res.headers.get("Referrer-Policy"), "strict-origin-when-cross-origin")
-        self.assertIn("default-src 'self'", res.headers.get("Content-Security-Policy", ""))
+        csp = res.headers.get("Content-Security-Policy", "")
+        self.assertIn("default-src 'self'", csp)
+        self.assertRegex(csp, r"'nonce-[A-Za-z0-9_-]+'")
+        self.assertNotIn("'unsafe-inline'", csp.split("script-src")[1].split(";")[0])
         self.assertIsNone(res.headers.get("Strict-Transport-Security"))
 
     def test_hsts_present_for_https_forwarded_proto(self):
