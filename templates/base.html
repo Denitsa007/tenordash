@@ -72,6 +72,12 @@
   </nav>
 
   <main class="main">
+    {% if demo_mode %}
+    <div class="demo-banner" id="demo-banner" role="status" aria-live="polite">
+      <span>This is a live read-only demo - data resets periodically.</span>
+      <button type="button" class="demo-banner-close" onclick="dismissDemoBanner()" aria-label="Dismiss demo banner">&times;</button>
+    </div>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 
@@ -141,10 +147,15 @@
           <label>Export Path</label>
           <div style="display:flex; gap:8px;">
             <input type="text" id="settings-export-path"
-                   placeholder="/path/to/export/folder" style="flex:1;" />
+                   placeholder="/path/to/export/folder" style="flex:1;"
+                   {% if demo_mode %}readonly title="Export path configuration is disabled in demo mode"{% endif %} />
             <button type="button" class="btn-secondary" id="browse-btn"
-                    onclick="openFolderBrowser()">Browse</button>
+                    onclick="openFolderBrowser()"
+                    {% if demo_mode %}disabled title="Export path configuration is disabled in demo mode"{% endif %}>Browse</button>
           </div>
+          {% if demo_mode %}
+          <div class="form-hint" style="color: var(--berry);">Export path configuration is not available in demo mode.</div>
+          {% endif %}
           <div id="folder-browser" style="display:none;">
             <div class="folder-breadcrumb" id="folder-breadcrumb"></div>
             <div class="folder-list" id="folder-list"></div>
@@ -170,10 +181,41 @@
 
   <script src="{{ url_for('static', filename='app.js') }}"></script>
   <script>
+  window.TENORDASH_DEMO_MODE = {{ "true" if demo_mode else "false" }};
+
+  function dismissDemoBanner() {
+    const banner = document.getElementById('demo-banner');
+    if (banner) banner.style.display = 'none';
+    try { localStorage.setItem('tenordash-demo-banner-dismissed', '1'); } catch (e) {}
+  }
+
+  function applyDemoReadOnlyUI() {
+    if (!window.TENORDASH_DEMO_MODE) return;
+    try {
+      if (localStorage.getItem('tenordash-demo-banner-dismissed') === '1') {
+        const banner = document.getElementById('demo-banner');
+        if (banner) banner.style.display = 'none';
+      }
+    } catch (e) {}
+
+    document.querySelectorAll('button[type="submit"]').forEach(btn => {
+      btn.disabled = true;
+      btn.title = 'This is a read-only demo';
+      btn.classList.add('demo-disabled');
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', applyDemoReadOnlyUI);
+
   function openCurrencyModal() {
     document.getElementById('currency-form').reset();
     document.getElementById('currency-msg').style.display = 'none';
-    document.getElementById('currency-submit-btn').disabled = false;
+    const submitBtn = document.getElementById('currency-submit-btn');
+    submitBtn.disabled = !!window.TENORDASH_DEMO_MODE;
+    if (window.TENORDASH_DEMO_MODE) {
+      submitBtn.title = 'This is a read-only demo';
+      submitBtn.classList.add('demo-disabled');
+    }
     document.getElementById('currency-modal').classList.add('show');
     document.getElementById('currency-code').focus();
   }
