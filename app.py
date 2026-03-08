@@ -24,13 +24,17 @@ def _env_flag(name):
 
 
 DEMO_MODE = _env_flag("DEMO_MODE")
-IS_PRODUCTION = DEMO_MODE or bool(os.environ.get("RENDER")) or os.environ.get("FLASK_ENV", "").lower() == "production"
+IS_PRODUCTION = (
+    DEMO_MODE
+    or bool(os.environ.get("RENDER"))
+    or os.environ.get("FLASK_ENV", "").lower() == "production"
+)
 BROWSE_DIRS_ENABLED = not IS_PRODUCTION
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
 app = Flask(__name__)
 app.config["DEMO_MODE"] = DEMO_MODE
-app.debug = False
+app.debug = not IS_PRODUCTION
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 secret_key = os.environ.get("SECRET_KEY")
@@ -255,6 +259,8 @@ def dashboard():
 
 @app.route("/healthz")
 def healthz():
+    with db_conn() as conn:
+        conn.execute("SELECT 1")
     return "ok", 200
 
 
@@ -632,6 +638,8 @@ def update_setting():
             return jsonify({"ok": False, "error": f"continuation_limit must be one of: {', '.join(sorted(VALID_CONTINUATION_LIMITS))}"}), 400
 
     elif key == "export_path":
+        # Defense-in-depth: before_request already blocks PUT in demo mode,
+        # but guard explicitly in case the endpoint is ever refactored.
         if DEMO_MODE:
             return jsonify({"ok": False, "error": "Export path cannot be changed in demo mode"}), 403
         path = os.path.expanduser(value)
