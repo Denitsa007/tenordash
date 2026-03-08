@@ -8,6 +8,7 @@ __pycache__/
 *.db
 *.xlsm
 *.xlsx
+!Sample Data Synthetic.xlsx
 
 # OS / IDE
 .DS_Store
