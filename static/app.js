@@ -19,7 +19,16 @@ document.addEventListener('keydown', function(e) {
 async function openSettingsModal() {
   const msgEl = document.getElementById('settings-msg');
   msgEl.style.display = 'none';
-  document.getElementById('settings-submit-btn').disabled = false;
+  const submitBtn = document.getElementById('settings-submit-btn');
+  if (window.TENORDASH_DEMO_MODE) {
+    submitBtn.disabled = true;
+    submitBtn.title = 'This is a read-only demo';
+    submitBtn.classList.add('demo-disabled');
+  } else {
+    submitBtn.disabled = false;
+    submitBtn.title = '';
+    submitBtn.classList.remove('demo-disabled');
+  }
 
   try {
     const res = await fetch('/api/settings');
@@ -40,6 +49,7 @@ async function openSettingsModal() {
 let currentBrowsePath = '';
 
 async function openFolderBrowser() {
+  if (window.TENORDASH_DEMO_MODE) return;
   const current = document.getElementById('settings-export-path').value;
   await navigateToFolder(current || '~');
   document.getElementById('folder-browser').style.display = 'block';
