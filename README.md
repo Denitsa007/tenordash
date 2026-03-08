@@ -2,6 +2,8 @@
 
 A local Flask web app for tracking treasury fixed advance borrowings — replacing an Excel-based workflow with structured data entry, automatic calculations, and a dashboard with continuation date alerts.
 
+**[Live Demo](https://tenordash.denitsa.ch)** (read-only, synthetic data)
+
 ## What It Does
 
 - **Dashboard** — Active instruments at a glance, summary cards per currency, upcoming continuation alerts with list/calendar views and month navigation, credit line utilization bars with aggregate CHF equivalent
