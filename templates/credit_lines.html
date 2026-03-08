@@ -7,11 +7,11 @@
 <div class="topbar">
   <h2>Credit Lines</h2>
   <div class="topbar-actions">
-    <button class="btn-secondary" onclick="window.print()">
+    <button class="btn-secondary" id="print-btn">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3.5 5V1.5h7V5"/><rect x="1.5" y="5" width="11" height="5.5" rx="1"/><path d="M3.5 8.5h7v4h-7z"/></svg>
       Print
     </button>
-    <button class="btn-primary" onclick="openCLForm()">
+    <button class="btn-primary" id="new-cl-btn">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="2" x2="7" y2="12"/><line x1="2" y1="7" x2="12" y2="7"/></svg>
       New Credit Line
     </button>
@@ -22,9 +22,9 @@
   <div class="section-header">
     <h3>Credit Lines ({{ lines|selectattr('archived', 'equalto', 0)|list|length }})</h3>
     <div class="filter-pills">
-      <span class="pill active" data-filter="active" onclick="filterCLs('active', this)">Active</span>
-      <span class="pill" data-filter="archived" onclick="filterCLs('archived', this)">Archived</span>
-      <span class="pill" data-filter="all" onclick="filterCLs('all', this)">All</span>
+      <span class="pill active" data-filter="active">Active</span>
+      <span class="pill" data-filter="archived">Archived</span>
+      <span class="pill" data-filter="all">All</span>
     </div>
   </div>
   <table class="data-table" id="cl-table">
@@ -63,10 +63,10 @@
         <td>
           <div class="row-actions">
             {% if cl.archived %}
-            <button onclick="restoreCL('{{ cl.id }}')" title="Restore">&#8634;</button>
+            <button class="action-restore" title="Restore">&#8634;</button>
             {% else %}
-            <button onclick="editCL('{{ cl.id }}')" title="Edit">&#9998;</button>
-            <button class="delete" onclick="archiveCL('{{ cl.id }}')" title="Archive">&#128451;</button>
+            <button class="action-edit" title="Edit">&#9998;</button>
+            <button class="delete action-archive" title="Archive">&#128451;</button>
             {% endif %}
           </div>
         </td>
@@ -89,7 +89,7 @@
   <div class="modal-box" style="width: 480px;">
     <h3>
       <span id="cl-view-title"></span>
-      <button class="panel-close" onclick="closeCLView()">&times;</button>
+      <button class="panel-close" id="cl-view-close-btn">&times;</button>
     </h3>
     <div class="panel-view">
       <div class="detail-grid">
@@ -131,7 +131,7 @@
         </div>
       </div>
       <div class="form-actions">
-        <button type="button" class="btn-secondary" onclick="closeCLView()">Close</button>
+        <button type="button" class="btn-secondary" id="cl-view-close-footer">Close</button>
         <button type="button" class="btn-primary" id="cl-view-edit-btn">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.5 1.5l2 2L4 12H2v-2z"/></svg>
           Edit
@@ -146,9 +146,9 @@
   <div class="modal-box" style="width: 520px; max-height: 90vh; overflow-y: auto;">
     <h3>
       <span id="cl-panel-title">New Credit Line</span>
-      <button class="panel-close" onclick="closeCLForm()">&times;</button>
+      <button class="panel-close" id="cl-form-close-btn">&times;</button>
     </h3>
-    <form id="cl-form" onsubmit="saveCL(event)">
+    <form id="cl-form">
       <input type="hidden" id="cl-edit-id" value="" />
       <div class="form-group">
         <label>Bank</label>
@@ -172,12 +172,12 @@
               <option value="{{ curr.code }}">{{ curr.code }}</option>
               {% endfor %}
             </select>
-            <button type="button" class="btn-add-currency" onclick="openCurrencyModal()" title="Add currency">+</button>
+            <button type="button" class="btn-add-currency" id="cl-add-currency-btn" title="Add currency">+</button>
           </div>
         </div>
         <div class="form-group">
           <label>Amount</label>
-          <input type="text" id="cl-amount" required placeholder="e.g. 510,000,000" oninput="formatCLAmount(this)" inputmode="numeric" />
+          <input type="text" id="cl-amount" required placeholder="e.g. 510,000,000" inputmode="numeric" />
         </div>
       </div>
       <div class="form-group">
@@ -202,7 +202,7 @@
         <textarea id="cl-note" placeholder="Optional notes..."></textarea>
       </div>
       <div class="form-actions">
-        <button type="button" class="btn-secondary" onclick="closeCLForm()">Cancel</button>
+        <button type="button" class="btn-secondary" id="cl-form-cancel-btn">Cancel</button>
         <button type="submit" class="btn-primary">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="2 7 5.5 10.5 12 4"/></svg>
           Save
@@ -214,7 +214,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 const parseNum = window.TDNumber.parseLocaleNumber;
 
 function formatCLAmount(el) {
@@ -289,11 +289,14 @@ document.getElementById('cl-view-edit-btn').addEventListener('click', function()
   }
 });
 
-// Row click → open view mode (skip clicks on action buttons)
+// Row click → open view mode; action button delegation
 document.getElementById('cl-table').addEventListener('click', function(e) {
-  if (e.target.closest('.row-actions')) return;
   const row = e.target.closest('tr[data-id]');
-  if (row) viewCL(row.dataset.id);
+  if (!row) return;
+  if (e.target.closest('.action-edit')) { editCL(row.dataset.id); return; }
+  if (e.target.closest('.action-archive')) { archiveCL(row.dataset.id); return; }
+  if (e.target.closest('.action-restore')) { restoreCL(row.dataset.id); return; }
+  if (!e.target.closest('.row-actions')) viewCL(row.dataset.id);
 });
 
 async function saveCL(e) {
@@ -353,5 +356,19 @@ function filterCLs(filter, pill) {
   const label = filter === 'all' ? 'All Credit Lines' : filter === 'archived' ? 'Archived Credit Lines' : 'Credit Lines';
   h3.textContent = label + ' (' + visible + ')';
 }
+
+// Bind event handlers
+document.getElementById('print-btn').addEventListener('click', function() { window.print(); });
+document.getElementById('new-cl-btn').addEventListener('click', openCLForm);
+document.querySelectorAll('.filter-pills .pill[data-filter]').forEach(function(pill) {
+  pill.addEventListener('click', function() { filterCLs(pill.dataset.filter, pill); });
+});
+document.getElementById('cl-view-close-btn').addEventListener('click', closeCLView);
+document.getElementById('cl-view-close-footer').addEventListener('click', closeCLView);
+document.getElementById('cl-form-close-btn').addEventListener('click', closeCLForm);
+document.getElementById('cl-form-cancel-btn').addEventListener('click', closeCLForm);
+document.getElementById('cl-form').addEventListener('submit', saveCL);
+document.getElementById('cl-add-currency-btn').addEventListener('click', openCurrencyModal);
+document.getElementById('cl-amount').addEventListener('input', function() { formatCLAmount(this); });
 </script>
 {% endblock %}

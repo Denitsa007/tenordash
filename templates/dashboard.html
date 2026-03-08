@@ -8,7 +8,7 @@
 <div class="topbar">
   <h2>Dashboard</h2>
   <div class="topbar-actions">
-    <button class="btn-secondary" onclick="window.print()">
+    <button class="btn-secondary" id="print-btn">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M3.5 5V1.5h7V5"/><rect x="1.5" y="5" width="11" height="5.5" rx="1"/><path d="M3.5 8.5h7v4h-7z"/></svg>
       Print
     </button>
@@ -42,9 +42,9 @@
       <div class="section-header">
         <h3>Active Instruments ({{ active|length }})</h3>
         <div class="filter-pills">
-          <span class="pill active" onclick="filterDash('all', this)">All</span>
+          <span class="pill active" data-filter="all">All</span>
           {% for curr in currencies %}
-          <span class="pill" onclick="filterDash('{{ curr.code }}', this)">{{ curr.code }}</span>
+          <span class="pill" data-filter="{{ curr.code }}">{{ curr.code }}</span>
           {% endfor %}
         </div>
       </div>
@@ -106,8 +106,8 @@
         Upcoming Continuations
       </div>
       <div class="continuation-view-switch">
-        <button class="pill active" type="button" data-view="list" onclick="switchContinuationView('list', this)">List</button>
-        <button class="pill" type="button" data-view="calendar" onclick="switchContinuationView('calendar', this)">Calendar</button>
+        <button class="pill active" type="button" data-view="list">List</button>
+        <button class="pill" type="button" data-view="calendar">Calendar</button>
       </div>
 
       <!-- Timeline: Date-left list card -->
@@ -134,11 +134,11 @@
         {% if continuation_calendar is defined %}
         <div class="mini-calendar">
           <div class="mini-cal-header">
-            <button class="cal-nav-btn" type="button" onclick="navigateCalendar(-1)" aria-label="Previous month">&lsaquo;</button>
+            <button class="cal-nav-btn" type="button" id="cal-prev-btn" aria-label="Previous month">&lsaquo;</button>
             <strong id="cal-month-label"
                     data-year="{{ continuation_calendar.year }}"
                     data-month="{{ continuation_calendar.month }}">{{ continuation_calendar.month_label }}</strong>
-            <button class="cal-nav-btn" type="button" onclick="navigateCalendar(1)" aria-label="Next month">&rsaquo;</button>
+            <button class="cal-nav-btn" type="button" id="cal-next-btn" aria-label="Next month">&rsaquo;</button>
           </div>
           <div class="mini-cal-grid mini-cal-weekdays">
             <div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div><div>Su</div>
@@ -212,7 +212,7 @@
   <div class="modal-box" style="width: 480px;">
     <h3>
       <span id="dash-panel-title"></span>
-      <button class="panel-close" onclick="closeDashPanel()">&times;</button>
+      <button class="panel-close" id="dash-panel-close">&times;</button>
     </h3>
     <div class="panel-view">
       <div class="detail-grid">
@@ -264,7 +264,7 @@
         </div>
       </div>
       <div class="form-actions">
-        <button type="button" class="btn-secondary" onclick="closeDashPanel()">Close</button>
+        <button type="button" class="btn-secondary" id="dash-panel-close-btn">Close</button>
         <a href="#" class="btn-primary" id="dash-view-edit-link">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.5 1.5l2 2L4 12H2v-2z"/></svg>
           Edit
@@ -276,7 +276,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
+<script nonce="{{ csp_nonce }}">
 // ── Column sorting ──
 const numericSortKeys = new Set(['amount', 'rate']);
 
@@ -441,5 +441,20 @@ async function navigateCalendar(delta) {
     }).join('');
   }
 }
+
+// Bind event handlers
+document.getElementById('print-btn').addEventListener('click', function() { window.print(); });
+document.querySelectorAll('.filter-pills .pill[data-filter]').forEach(function(pill) {
+  pill.addEventListener('click', function() { filterDash(pill.dataset.filter, pill); });
+});
+document.querySelectorAll('.continuation-view-switch .pill[data-view]').forEach(function(btn) {
+  btn.addEventListener('click', function() { switchContinuationView(btn.dataset.view, btn); });
+});
+var calPrev = document.getElementById('cal-prev-btn');
+var calNext = document.getElementById('cal-next-btn');
+if (calPrev) calPrev.addEventListener('click', function() { navigateCalendar(-1); });
+if (calNext) calNext.addEventListener('click', function() { navigateCalendar(1); });
+document.getElementById('dash-panel-close').addEventListener('click', closeDashPanel);
+document.getElementById('dash-panel-close-btn').addEventListener('click', closeDashPanel);
 </script>
 {% endblock %}
