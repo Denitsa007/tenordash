@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: tenordash
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -c "import db, seed; db.init_db(); seed.seed_if_empty()" && gunicorn app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: DEMO_MODE
+        value: "1"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: "3.12.3"
