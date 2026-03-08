@@ -2,6 +2,7 @@ services:
   - type: web
     name: tenordash
     runtime: python
+    plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: python -c "import db, seed; db.init_db(); seed.seed_if_empty()" && gunicorn app:app --bind 0.0.0.0:$PORT
     envVars:
