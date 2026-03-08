@@ -152,6 +152,31 @@ body {
 
 .topbar-actions { display: flex; gap: 10px; align-items: center; }
 
+/* ── Demo Banner ── */
+
+.demo-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: #fff4dd;
+  border: 1px solid #f0d6a2;
+  color: #6b4a00;
+  font-size: 13px;
+}
+
+.demo-banner-close {
+  border: none;
+  background: none;
+  color: #6b4a00;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
 /* ── Sidebar Monogram ── */
 
 .sidebar-monogram {
@@ -214,6 +239,11 @@ body {
   transition: all 0.15s;
 }
 .btn-secondary:hover { border-color: var(--text); }
+
+button.demo-disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
 
 .btn-danger {
   background: none;
