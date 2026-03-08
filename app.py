@@ -4,19 +4,93 @@ import os
 import re
 
 from flask import Flask, g, jsonify, render_template, request
+try:
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
+except ImportError:  # pragma: no cover - dependency is required in deploy env
+    Limiter = None
+    get_remote_address = None
 
 import db
 import ecb
 import helpers
 import import_utils
-from config import CONTINUATION_ALERT_DAYS, BASE_CURRENCY
+from config import CONTINUATION_ALERT_DAYS, BASE_CURRENCY, EXPORT_PATH
 from export import export_xlsx
 
+
+def _env_flag(name):
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+DEMO_MODE = _env_flag("DEMO_MODE")
+IS_PRODUCTION = (
+    DEMO_MODE
+    or bool(os.environ.get("RENDER"))
+    or os.environ.get("FLASK_ENV", "").lower() == "production"
+)
+BROWSE_DIRS_ENABLED = not IS_PRODUCTION
+WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
 app = Flask(__name__)
+app.config["DEMO_MODE"] = DEMO_MODE
+app.debug = not IS_PRODUCTION
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
+secret_key = os.environ.get("SECRET_KEY")
+if IS_PRODUCTION and not secret_key:
+    raise RuntimeError("SECRET_KEY must be set in production/demo mode")
+if secret_key:
+    app.config["SECRET_KEY"] = secret_key
+
+try:
+    os.makedirs(EXPORT_PATH, exist_ok=True)
+except OSError:
+    app.logger.warning("Could not create export directory at startup: %s", EXPORT_PATH)
+
+limiter = None
+if Limiter is not None and get_remote_address is not None:
+    limiter = Limiter(
+        key_func=get_remote_address,
+        app=app,
+        storage_uri="memory://",
+        default_limits=["600 per hour"],
+    )
+
+
+def rate_limit(limit_value):
+    def decorator(fn):
+        if limiter is None:
+            return fn
+        return limiter.limit(limit_value)(fn)
+    return decorator
+
+
+@app.before_request
+def enforce_demo_read_only():
+    if not DEMO_MODE:
+        return None
+    if request.method not in WRITE_METHODS:
+        return None
+
+    payload = {"ok": False, "error": "This is a read-only demo"}
+    if request.path.startswith("/api/") or request.is_json:
+        return jsonify(payload), 403
+    return payload["error"], 403
+
+
+@app.after_request
+def add_security_headers(response):
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    return response
 
 
 def _try_export(export_path=None):
     """Run export; return warning string on failure, None on success."""
+    if DEMO_MODE:
+        return None
     try:
         export_xlsx(export_path=export_path)
         return None
@@ -121,6 +195,7 @@ def inject_globals():
             "settings": g.settings,
             "fx_rates": fx_rates,
             "ecb_date": ecb_date,
+            "demo_mode": DEMO_MODE,
         }
 
 
@@ -182,6 +257,13 @@ def dashboard():
         )
 
 
+@app.route("/healthz")
+def healthz():
+    with db_conn() as conn:
+        conn.execute("SELECT 1")
+    return "ok", 200
+
+
 # ── Banks ──
 # No _try_export() here: banks are not exported to xlsx.  Advances and
 # credit lines reference banks by key, which never changes via upsert.
@@ -194,6 +276,7 @@ def banks_page():
 
 
 @app.route("/banks", methods=["POST"])
+@rate_limit("30 per minute")
 def create_bank():
     data, err = parse_json(required_fields=["bank_key", "bank_name"])
     if err:
@@ -205,6 +288,7 @@ def create_bank():
 
 
 @app.route("/banks/<key>", methods=["DELETE"])
+@rate_limit("30 per minute")
 def delete_bank(key):
     with db_conn() as conn:
         db.delete_bank(conn, key)
@@ -222,6 +306,7 @@ def credit_lines_page():
 
 
 @app.route("/credit-lines", methods=["POST"])
+@rate_limit("30 per minute")
 def create_credit_line():
     data, err = parse_json(
         required_fields=["bank_key", "currency", "amount", "committed", "start_date"]
@@ -248,6 +333,7 @@ def get_credit_line(cl_id):
 
 
 @app.route("/credit-lines/<cl_id>", methods=["PUT"])
+@rate_limit("30 per minute")
 def update_credit_line(cl_id):
     data, err = parse_json(
         required_fields=["bank_key", "currency", "amount", "committed", "start_date"]
@@ -265,6 +351,7 @@ def update_credit_line(cl_id):
 
 
 @app.route("/credit-lines/<cl_id>", methods=["DELETE"])
+@rate_limit("30 per minute")
 def archive_credit_line(cl_id):
     with db_conn() as conn:
         db.archive_credit_line(conn, cl_id)
@@ -276,6 +363,7 @@ def archive_credit_line(cl_id):
 
 
 @app.route("/credit-lines/<cl_id>/restore", methods=["PATCH"])
+@rate_limit("30 per minute")
 def restore_credit_line(cl_id):
     with db_conn() as conn:
         db.restore_credit_line(conn, cl_id)
@@ -299,6 +387,7 @@ def advances_page():
 
 
 @app.route("/advances", methods=["POST"])
+@rate_limit("30 per minute")
 def create_advance():
     data, err = parse_json(
         required_fields=[
@@ -337,6 +426,7 @@ def get_advance(fv_id):
 
 
 @app.route("/advances/<fv_id>", methods=["PUT"])
+@rate_limit("30 per minute")
 def update_advance(fv_id):
     data, err = parse_json(
         required_fields=[
@@ -366,6 +456,7 @@ def update_advance(fv_id):
 
 
 @app.route("/advances/<fv_id>", methods=["DELETE"])
+@rate_limit("30 per minute")
 def delete_advance(fv_id):
     with db_conn() as conn:
         db.delete_advance(conn, fv_id)
@@ -415,6 +506,7 @@ def check_cl_capacity():
 
 
 @app.route("/api/ecb-rate")
+@rate_limit("60 per minute")
 def ecb_rate():
     with db_conn() as conn:
         currencies = [dict(r) for r in db.get_currencies(conn)]
@@ -465,6 +557,7 @@ def list_currencies():
 
 
 @app.route("/api/currencies", methods=["POST"])
+@rate_limit("30 per minute")
 def add_currency():
     data, err = parse_json(required_fields=["code"])
     if err:
@@ -496,6 +589,7 @@ def add_currency():
 
 
 @app.route("/api/currencies/<code>", methods=["DELETE"])
+@rate_limit("30 per minute")
 def remove_currency(code):
     code = code.upper()
     if code == BASE_CURRENCY:
@@ -523,6 +617,7 @@ def list_settings():
 
 
 @app.route("/api/settings", methods=["PUT"])
+@rate_limit("30 per minute")
 def update_setting():
     data, err = parse_json(required_fields=["key", "value"])
     if err:
@@ -543,6 +638,10 @@ def update_setting():
             return jsonify({"ok": False, "error": f"continuation_limit must be one of: {', '.join(sorted(VALID_CONTINUATION_LIMITS))}"}), 400
 
     elif key == "export_path":
+        # Defense-in-depth: before_request already blocks PUT in demo mode,
+        # but guard explicitly in case the endpoint is ever refactored.
+        if DEMO_MODE:
+            return jsonify({"ok": False, "error": "Export path cannot be changed in demo mode"}), 403
         path = os.path.expanduser(value)
         if not os.path.isabs(path):
             return jsonify({"ok": False, "error": "Export path must be an absolute path"}), 400
@@ -565,35 +664,31 @@ def update_setting():
     return jsonify({"ok": True})
 
 
-@app.route("/api/browse-dirs")
-def browse_dirs():
-    """List subdirectories at a given path for the folder browser UI.
+if BROWSE_DIRS_ENABLED:
+    @app.route("/api/browse-dirs")
+    def browse_dirs():
+        """List subdirectories at a given path for the folder browser UI."""
+        path = request.args.get("path", os.path.expanduser("~"))
+        path = os.path.expanduser(path)
+        if not os.path.isabs(path):
+            return jsonify({"error": "Path must be absolute"}), 400
+        if not os.path.isdir(path):
+            return jsonify({"error": "Not a directory"}), 400
 
-    Security note: this endpoint exposes the server's directory structure.
-    It is safe for local-only use (localhost). If the app is ever exposed
-    to a network, add authentication or restrict the browsable root.
-    """
-    path = request.args.get("path", os.path.expanduser("~"))
-    path = os.path.expanduser(path)
-    if not os.path.isabs(path):
-        return jsonify({"error": "Path must be absolute"}), 400
-    if not os.path.isdir(path):
-        return jsonify({"error": "Not a directory"}), 400
+        try:
+            entries = sorted(
+                e.name for e in os.scandir(path)
+                if e.is_dir() and not e.name.startswith(".")
+            )
+        except PermissionError:
+            entries = []
 
-    try:
-        entries = sorted(
-            e.name for e in os.scandir(path)
-            if e.is_dir() and not e.name.startswith(".")
-        )
-    except PermissionError:
-        entries = []
-
-    writable = os.access(path, os.W_OK)
-    return jsonify({
-        "path": path,
-        "dirs": entries,
-        "writable": writable,
-    })
+        writable = os.access(path, os.W_OK)
+        return jsonify({
+            "path": path,
+            "dirs": entries,
+            "writable": writable,
+        })
 
 
 # ── Import ──
@@ -610,6 +705,7 @@ def import_page():
 
 
 @app.route("/api/import/preview", methods=["POST"])
+@rate_limit("30 per minute")
 def import_preview():
     if "file" not in request.files:
         return jsonify({"ok": False, "error": "No file uploaded"}), 400
@@ -657,6 +753,7 @@ def import_preview():
 
 
 @app.route("/api/import/execute", methods=["POST"])
+@rate_limit("30 per minute")
 def import_execute():
     if "file" not in request.files:
         return jsonify({"ok": False, "error": "No file uploaded"}), 400
@@ -742,4 +839,4 @@ def date_display_filter(value):
 
 if __name__ == "__main__":
     db.init_db()
-    app.run(debug=True, port=5001)
+    app.run(debug=False, port=int(os.environ.get("PORT", "5001")))
